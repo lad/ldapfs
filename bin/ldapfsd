@@ -1,0 +1,9 @@
+#!/usr/bin/env python
+
+"""Run LdapFS."""
+
+import sys
+import ldapfs
+
+if __name__ == '__main__':
+    ldapfs.LdapFS.run()

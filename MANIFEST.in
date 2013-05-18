@@ -1,0 +1,7 @@
+include MANIFEST.in
+include etc/ldapfs.cfg
+recursive-include ldapfs *
+recursive-include etc *
+exclude .gitignore
+exclude pylintrc
+global-exclude *pyc
