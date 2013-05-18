@@ -1,7 +1,7 @@
 
 """LDAP Config File Support."""
 
-from .config_file import ConfigError, ConfigFile
+from .conf import ConfigError, ConfigFile
 import ldap
 
 

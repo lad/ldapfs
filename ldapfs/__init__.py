@@ -1,2 +1,2 @@
 
-from ldapfs import LdapFS
+from .ldapfs import LdapFS

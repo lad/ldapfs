@@ -3,11 +3,7 @@
 
 import os
 import ConfigParser
-
-
-class ConfigError(Exception):
-    """Config parsing, formating or absence errors."""
-    pass
+from .exceptions import ConfigError
 
 
 # pylint: disable-msg=R0903
