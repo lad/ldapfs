@@ -54,7 +54,6 @@ class Connection(object):
         try:
             return self.hosts[host]['con'].search_st(str(dn), scope, attrsonly=attrsonly)
         except KeyError:
-            LOG.debug('-------- hosts.get({})={}'.format(host, self.hosts.get(host)))
             raise NoSuchHost('No configured LDAP host={}'.format(host))
         except ldap.INVALID_DN_SYNTAX:
             raise InvalidDN('Invalid DN={}'.format(dn))
