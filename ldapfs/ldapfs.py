@@ -176,14 +176,14 @@ class LdapFS(fuse.Fuse):
         # Check if the filename part matches the special file ".attributes"
         if path.filepart == self.ATTRIBUTES_FILENAME:
             LOG.debug('Return {}'.format(self.ATTRIBUTES_FILENAME))
-            return fs.Stat(isdir=False, size=fs.entry_size(entry))
+            return fs.Stat(isdir=False, dct=entry)
         else:
             # We have the parent object. Check if there's an attribute with the
             # same name as the input filename
             attr = entry.get(path.filepart)
             if attr:
                 LOG.debug('PARENT-ENTRY={}'.format(entry))
-                return fs.Stat(isdir=False, size=fs.attr_size(attr))
+                return fs.Stat(isdir=False, lst=attr)
             else:
                 LOG.debug('Attribute={} not found in parent-dn={} for fspath={}'.format(
                           path.filepart, parent_dn, fspath))
