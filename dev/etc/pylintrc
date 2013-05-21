@@ -7,7 +7,7 @@
 # pygtk.require().
 # If you're using a virtualenv uncoment the following line and change
 # this path to point to the activate_this.py file in bin directory
-init-hook='this_file="/home/louis/dev/ext/ldapfs/dev/venv/bin/activate_this.py";execfile(this_file, dict(__file__=this_file))'
+init-hook='this_file="##REPLACE##/bin/activate_this.py";execfile(this_file, dict(__file__=this_file))'
 
 # Profiled execution.
 profile=no
