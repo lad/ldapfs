@@ -3,3 +3,5 @@ dist
 ldapfs-.*dev
 ldapfs.egg-info
 *.pyc
+.pip_cache
+dev/venv
