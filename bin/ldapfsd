@@ -2,7 +2,6 @@
 
 """Run LdapFS."""
 
-import sys
 import ldapfs
 
 if __name__ == '__main__':
