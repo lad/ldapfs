@@ -10,6 +10,8 @@ LOG = logging.getLogger(__name__)
 
 
 class Path(object):
+    """An abstraction for the file system paths passed to FUSE API methods."""
+
     def __init__(self, fspath, hosts):
         LOG.debug('ENTER: fspath={} hosts={}'.format(fspath, hosts))
         self.fspath = fspath
@@ -34,16 +36,21 @@ class Path(object):
         return self.len != 0
 
     def is_root_path(self):
+        """Does path represent the root file system path?"""
         return self.parts == ['']
 
     def has_host_part(self):
+        """Does the path contain a root component matching a configured host."""
         return self.host is not None
 
     def has_base_dn_part(self):
+        """Does the path contain a component that matches a configured base-dn?"""
         return self.base_dn is not None
 
 
 class DN(object):
+    """An abstraction of an LDAP DN."""
+
     def __init__(self, parts):
         LOG.debug('ENTER: parts={}'.format(parts))
         self.parts = parts
