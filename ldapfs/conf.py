@@ -16,6 +16,7 @@ class ConfigFile(object):
             raise ConfigError('Error accessing config file: {}'.format(config_path))
 
     def get_sections(self):
+        """Return the names of the config file sections."""
         return self.parser.sections()
 
     def get(self, section, required_config=None, parse_config=None):
@@ -62,6 +63,7 @@ class ConfigFile(object):
 
     @staticmethod
     def parse_dir(dirname):
+        """Validate that the given argument is a valid existing directory."""
         if os.path.isdir(dirname):
             return dirname
         else:

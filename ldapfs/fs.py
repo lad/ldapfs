@@ -9,8 +9,6 @@ import logging
 LOG = logging.getLogger(__name__)
 
 
-
-
 # pylint: disable-msg=R0903
 class Stat(fuse.Stat):
     """Abstraction for file stat derived from fuse.Stat

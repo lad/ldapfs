@@ -23,7 +23,8 @@ LOG = logging.getLogger(__name__)
 fuse.fuse_python_api = (0, 2)
 
 
-
+# pylint: disable-msg=R0904
+# - Disable "too many public methods" - this is the FUSE API not under our control
 class LdapFS(fuse.Fuse):
     """LDAP backed Fuse File System."""
 
@@ -117,6 +118,10 @@ class LdapFS(fuse.Fuse):
         """
         self.ldap.connect()
 
+    # pylint: disable-msg=R0911,R0912
+    # - pylint doesn't like the number of return statements or branches in this method
+    # - I think the logic is represented more cleanly by having multiple returns and
+    #   branches here.
     def getattr(self, fspath):
         """Return stat structure for the given path."""
         LOG.debug('ENTER: fspath={}'.format(fspath))

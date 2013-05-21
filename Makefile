@@ -1,10 +1,10 @@
 VENV=$(PWD)/dev/venv
 PIP_DOWNLOAD_CACHE ?= $(PWD)/.pip_cache
-INSTALL = $(VENV)/bin/pip install --download-cache $(PIP_DOWNLOAD_CACHE) --use-mirrors
+PIP = $(VENV)/bin/pip install --download-cache $(PIP_DOWNLOAD_CACHE) --use-mirrors
 PYTHON = $(VENV)/bin/python
 SED=sed
-PYLINTRC = $(PWD)/dev/etc/pylintrc
 PYLINT=pylint
+PYLINTRC = $(PWD)/dev/etc/pylintrc
 
 .PHONY: all clean virtualenv build test
 
@@ -16,14 +16,14 @@ $(VENV):
 	python $(PWD)/dev/bin/virtualenv.py $(VENV)
 
 build: virtualenv
-	$(INSTALL) -U -r requirements.txt
+	$(PIP) -U -r requirements.txt
 	$(PYTHON) setup.py develop
 
 fixup-pylintrc:
 	$(SED) -i "s#REPLACE#$(PWD)#" $(PYLINTRC)
 
-pylint: fixup-pylintrc
+pylint: fixup-pylintrc virtualenv
 	$(PYLINT) --rcfile=$(PYLINTRC) ldapfs
 
 clean:
-	rm -rf $(VENV)
+	rm -rf $(VENV) build dist *.egg-info
