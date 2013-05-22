@@ -23,13 +23,13 @@ $(VENV):
 	virtualenv $(VENV)
 
 build: virtualenv
-	$(PIP) -U -r requirements.txt
+	$(PIP) -r requirements.txt
 	$(PYTHON) setup.py develop
 
 $(PYLINTRC):
 	$(SED) "s%##REPLACE##%$(VENV)%" "$(PYLINTRC_SRC)" >| "$(PYLINTRC)"
 
-pylint: virtualenv $(PYLINTRC)
+pylint: virtualenv build $(PYLINTRC)
 	$(PYLINT) --rcfile="$(PYLINTRC)" ldapfs
 
 clean:
