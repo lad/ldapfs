@@ -6,7 +6,7 @@ An LDAP backed file system.
 
 This is a small Fuse based file system written using fuse-python and
 python-ldap. It allows you to mount an LDAP hierarchy as a set of
-files and directories on disk. It is most useful for examing an existing
+files and directories on disk. It is most useful for examining an existing
 hierarchy.
 
 **I use this solely for development purposes. It has never been used in
@@ -24,7 +24,8 @@ A brief overview:
 
 * The contents of the file is a single line, starting with the attribute name,
   followed by an "=" character, followed by the attribute value, ending with a
-  "\n" character attribute.
+  "\n" character attribute. If the object is multi-valued each attribute value
+  will be present separated by a "," character.
 
 * The size of an attribute file reported to the file system includes size for
   the "=" and "\n" characters in addition to the name and value pair.
