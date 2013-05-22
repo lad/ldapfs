@@ -39,9 +39,9 @@ Installation
 The package is not yet on pypi. To install clone this repository and install
 with the following:
 
-  # git clone git://github.com/lad/ldapfs.git
-  # cd ldapfs
-  # python setup.py install
+    # git clone git://github.com/lad/ldapfs.git
+    # cd ldapfs
+    # python setup.py install
 
 
 Setup
