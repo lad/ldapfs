@@ -47,7 +47,7 @@ with the following:
 Setup
 -----
 
-The configuration file in <install-dir>/etc/ldapfs.cfg is used to specify the
+The configuration file in install-dir/etc/ldapfs.cfg is used to specify the
 LDAP servers, credentials and base DNs to mount.
 
     [ldapfs]
@@ -72,3 +72,15 @@ LDAP servers, credentials and base DNs to mount.
     bind_dn = cn=admin,dc=dunne,dc=ie
     bind_password = password
     base_dns = "dc=dunne,dc=ie"
+
+
+Usage
+-----
+
+To mount the file system:
+
+    # install-dir/bin/ldapfsd -o config=install-dir/etc/ldapfs.cfg <mountpoint>
+
+To unmount:
+
+    # fusermount -u <mountpoint>
