@@ -13,7 +13,7 @@ import fuse
 import logging
 import pprint
 
-from .exceptions import LdapfsException, LdapException, InvalidDN, NoSuchObject, ConfigError
+from .exceptions import LdapfsException, LdapException, InvalidDN, NoSuchObject
 from .ldapconf import LdapConfigFile
 from . import ldapcon
 from . import name
@@ -39,7 +39,7 @@ class LdapFS(fuse.Fuse):
     def __init__(self, *args, **kwargs):
         """Construct an LdapFS object absed on the Fuse class.
 
-           :raises: ConfigError
+           :raises: ConfigError, fuse.FuseError
         """
         fuse.Fuse.__init__(self, *args, **kwargs)
         self.flags = 0
@@ -66,14 +66,6 @@ class LdapFS(fuse.Fuse):
         """
         config_parser = LdapConfigFile(self.config)
 
-        # We should have an 'ldapfs' section common to the entire app, and
-        # separate sections for each LDAP host that we are to connect to.
-        config_sections = config_parser.get_sections()
-        try:
-            config_sections.remove('ldapfs')
-        except ValueError:
-            raise ConfigError('No "ldapfs" section found in config file. Path={}'.format(self.config))
-
         # Grab the 'ldapfs' section and add each config item as an attribute of this instance
         config_items = config_parser.get('ldapfs',
                                          required_config=self.REQUIRED_BASE_CONFIG,
@@ -92,6 +84,11 @@ class LdapFS(fuse.Fuse):
         for module, level in self.log_levels.iteritems():
             log = logging.getLogger(module)
             log.setLevel(level)
+
+        # We should have an 'ldapfs' section common to the entire app, and
+        # separate sections for each LDAP host that we are to connect to.
+        config_sections = config_parser.get_sections()
+        config_sections.remove('ldapfs')
 
         # Save the configuration for each host.
         for section in config_sections:
@@ -154,8 +151,7 @@ class LdapFS(fuse.Fuse):
                 # We found a matching LDAP object. We're done.
                 return fs.Stat(isdir=True)
         except ldapcon.LdapException as ex:
-            #LOG.debug('dn={}. Exception={}'.format(dn, ex))
-            LOG.debug('fspath={} Exception={}'.format(fspath, ex))
+            LOG.debug('Exception from ldap.exists for dn={} for fspath={}. {}'.format(dn, fspath, ex))
             return -errno.ENOENT
 
         if path.len == 2:
@@ -172,10 +168,10 @@ class LdapFS(fuse.Fuse):
 
             entry = self.ldap.get(path.host, parent_dn)[0][1]
         except ldapcon.NoSuchObject:
-            LOG.debug('parent_dn={} not found'.format(parent_dn))
+            LOG.debug('parent_dn={} not found for fspath={}'.format(parent_dn, fspath))
             return -errno.ENOENT
         except ldapcon.LdapException as ex:
-            LOG.debug('parent_dn={}. Exception={}'.format(parent_dn, ex))
+            LOG.debug('Exception from ldap.get for parent_dn={} for fspath={} {}'.format(parent_dn, fspath, ex))
             return -errno.ENOENT
 
         # Check if the filename part matches the special file ".attributes"
@@ -244,18 +240,6 @@ class LdapFS(fuse.Fuse):
             LOG.debug('yield {}'.format(ent))
             yield fuse.Direntry(ent)
 
-    # pylint: disable-msg=R0201
-    def mknod(self, fspath, mode, dev):
-        """Create a file entry at the given path with the given mode."""
-        LOG.debug('ENTER: fspath={} mode={} dev={}'.format(fspath, mode, dev))
-        return 0
-
-    # pylint: disable-msg=R0201
-    def unlink(self, fspath):
-        """Remove the file entry at the given path."""
-        LOG.debug('ENTER: fspath={}'.format(fspath))
-        return 0
-
     def read(self, fspath, size, offset):
         """Read the file entry at the given path, size and offset."""
         LOG.debug('ENTER: fspath={} size={} offset={}'.format(fspath, size, offset))
@@ -271,7 +255,7 @@ class LdapFS(fuse.Fuse):
 
         if not path.has_base_dn_part():
             LOG.debug("path doesn't match any configured base DNs for host={} path={}".format(
-                        path.host, fspath))
+                      path.host, fspath))
             return -errno.ENOENT
 
         try:
@@ -282,15 +266,14 @@ class LdapFS(fuse.Fuse):
         except InvalidDN:
             LOG.debug('Invalid dn from fspath={}'.format(fspath))
             return -errno.ENOENT
-        except (NoSuchObject, InvalidDN):
+        except NoSuchObject:
             LOG.debug('dn={} not found for fspath={}'.format(dn, fspath))
             return -errno.ENOENT
         except LdapException as ex:
-            LOG.debug('dn={}. fspath={}. Exception={}'.format(dn, fspath, ex))
+            LOG.debug('Exception from ldap.get for dn={} for fspath={}. {}'.format(dn, fspath, ex))
             return -errno.ENOENT
 
         LOG.debug('entry={}'.format(entry))
-
         if path.filepart == self.ATTRIBUTES_FILENAME:
             # Return name=value on separate lines for all attributes
             retval = '\n'.join(['{}={}'.format(key, ','.join(val)) for key, val in entry.iteritems()]) + '\n'
@@ -303,74 +286,6 @@ class LdapFS(fuse.Fuse):
                 return -errno.ENOENT
 
         return retval[offset:size]
-
-    def write(self, fspath, buf, offset):
-        """Write to given buffer at the given path at the given offset."""
-        LOG.debug('ENTER: fspath={} buf={} offset={}'.format(fspath, buf, offset))
-        return 0
-
-    # pylint: disable-msg=R0201
-    def open(self, fspath, flags):
-        """Open a file entry at the given path with the given flags."""
-        LOG.debug('ENTER: fspath={} flags={}'.format(fspath, flags))
-        return 0
-
-    # pylint: disable-msg=R0201
-    def release(self, fspath, flags):
-        """Close a file entry at the given path with the given flags."""
-        LOG.debug('ENTER: fspath={} flags={}'.format(fspath, flags))
-        return 0
-
-    # pylint: disable-msg=R0201
-    def truncate(self, fspath, size):
-        """Truncate the file entry at the given path to the given size."""
-        LOG.debug('ENTER: fspath={} size={}'.format(fspath, size))
-        return 0
-
-    # pylint: disable-msg=R0201
-    def utime(self, fspath, times):
-        """Set the time of the entry at the given path."""
-        LOG.debug('ENTER: fspath={} times={}'.format(fspath, times))
-        return 0
-
-    # pylint: disable-msg=R0201
-    def mkdir(self, fspath, mode):
-        """Create a directory entry at the given path with the given mode."""
-        LOG.debug('ENTER: fspath={} mode={}'.format(fspath, mode))
-        return 0
-
-    # pylint: disable-msg=R0201
-    def rmdir(self, fspath):
-        """Remove a directory entry at the given path."""
-        LOG.debug('ENTER: fspath={}'.format(fspath))
-        return 0
-
-    # pylint: disable-msg=R0201
-    def rename(self, src, dst):
-        """Rename a file/directory entry."""
-        LOG.debug('ENTER: src={} dst={}'.format(src, dst))
-
-        # TODO: Incomplete
-        # Works in the basic +ve case when moving dirs
-        # Still lots of different cases to do
-
-        #src_dn = None
-        #try:
-            #src_dn = name.path2dn(src)
-            #dst_rdn = name.path2rdn(dst)
-            #LOG.debug('rename_s({}, {})'.format(src_dn, dst_rdn))
-            #con = self.hosts[('localhost', 'dc=dunne,dc=ie')]['con']
-            #con.rename_s(src_dn, dst_rdn)
-        #except InvalidDN:
-            #if not src_dn:
-                #LOG.debug('Invalid dn from src path={}'.format(src))
-            #else:
-                #LOG.debug('Invalid rdn from dst path={}'.format(dst))
-            #return -errno.EINVAL
-        #except LdapException as ex:
-            #LOG.debug('rename_s: Exception={}'.format(ex))
-            #return -errno.EINVAL
-        return 0
 
     @staticmethod
     def run():
