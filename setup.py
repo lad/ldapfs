@@ -3,13 +3,15 @@
 from setuptools import setup, find_packages
 
 __version__ = '0.9'
+__author__="Louis Dunne"
+__author_email="louisadunne+ldapfs@gmail.com"
+__url__ = 'http://pypi.python.org/pypi/ldapfs/'
 __description__ = 'Fuse based LDAP File System'
 __long_description__ = __description__
 
 __install_requires__ = ['python-ldap', 'fuse-python']
 __scripts__ = ['bin/ldapfsd']
 __data_files__ = [('etc/ldapfs', ['etc/ldapfs.cfg'])]
-__url__ = 'http://pypi.python.org/pypi/ldapfs/'
 
 
 def run():
