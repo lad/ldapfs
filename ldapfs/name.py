@@ -40,11 +40,11 @@ class Path(object):
         return self.parts == ['']
 
     def has_host_part(self):
-        """Does the path contain a root component matching a configured host."""
+        """Does the path's first component match a configured host?"""
         return self.host is not None
 
     def has_base_dn_part(self):
-        """Does the path contain a component that matches a configured base-dn?"""
+        """Does the path's second component match a configured base-dn?"""
         return self.base_dn is not None
 
 
@@ -78,7 +78,7 @@ class DN(object):
 
     @staticmethod
     def create_parent(parts):
-        """Return a DN instance or None if the resulting parent dn is not valid."""
+        """Return a DN instance or None if the parent dn is not valid."""
         LOG.debug('ENTER: parts={}'.format(parts))
         pparts = len(parts) > 1 and parts[:-1] or []
         LOG.debug('pparts={}'.format(pparts))
