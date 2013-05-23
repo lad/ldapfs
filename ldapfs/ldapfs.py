@@ -7,7 +7,6 @@ Usage: ldapfs.py -o config=<config-file-path> <mountpoint>
 To unmount: fusermount -u <mountpoint>
 """
 
-import os
 import sys
 import errno
 import fuse
@@ -19,24 +18,27 @@ from .ldapconf import LdapConfigFile
 from . import ldapcon
 from . import name
 from . import fs
-from . import trace
 
 LOG = logging.getLogger(__name__)
 fuse.fuse_python_api = (0, 2)
 
 
 # pylint: disable-msg=R0904
-# - Disable "too many public methods" - this is the FUSE API not under our control
+# - Disable "too many public methods"
+# - this is the FUSE API not under our control
 class LdapFS(fuse.Fuse):
     """LDAP backed Fuse File System."""
 
     DEFAULT_CONFIG = '/etc/ldapfs/ldapfs.cfg'
     ATTRIBUTES_FILENAME = '.attributes'
-    REQUIRED_BASE_CONFIG = ['log_file', 'log_format', 'log_levels', 'ldap_trace_level']
+    REQUIRED_BASE_CONFIG = ['log_file', 'log_format', 'log_levels',
+                            'ldap_trace_level']
     PARSE_BASE_CONFIG = [('log_levels', LdapConfigFile.parse_log_levels),
                          ('ldap_trace_level', LdapConfigFile.parse_int)]
-    REQUIRED_HOST_CONFIG = ['host', 'port', 'base_dns', 'bind_dn', 'bind_password']
-    PARSE_HOST_CONFIG = [('port', LdapConfigFile.parse_int), ('base_dns', LdapConfigFile.validate_dns)]
+    REQUIRED_HOST_CONFIG = ['host', 'port', 'base_dns', 'bind_dn',
+                            'bind_password']
+    PARSE_HOST_CONFIG = [('port', LdapConfigFile.parse_int),
+                         ('base_dns', LdapConfigFile.validate_dns)]
 
     def __init__(self, *args, **kwargs):
         """Construct an LdapFS object absed on the Fuse class.
@@ -52,21 +54,19 @@ class LdapFS(fuse.Fuse):
         self.hosts = {}
         self.config = self.DEFAULT_CONFIG
         # Tell Fuse about our argument: -o config=<config-file>
-        self.parser.add_option(mountopt='config', metavar='CONFIG', default=self.config,
-                               help='Configuration filename [default: {}'.format(self.DEFAULT_CONFIG))
-        # This will set self.config if -o config=file was specified on the command line
+        self.parser.add_option(mountopt='config', metavar='CONFIG',
+                               default=self.config,
+                               help='Configuration filename [default: {}'
+                                    .format(self.DEFAULT_CONFIG))
+        # This will set self.config if -o config=file was specified on the
+        # command line
         args = fuse.Fuse.parse(self, values=self, errex=1)
-
-        #trace.start(os.path.dirname(__file__))
 
         # Sets instance vars with names from REQUIRED_BASE_CONFIG and
         # self.hosts keyed by hostname
         self._apply_config()
 
     
-    #def __del__(self):
-        #trace.stop()
-
     def _apply_config(self):
         """Parse the config file and apply the config settings.
 
@@ -74,13 +74,15 @@ class LdapFS(fuse.Fuse):
         """
         config_parser = LdapConfigFile(self.config)
 
-        # Grab the 'ldapfs' section and add each config item as an attribute of this instance
+        # Grab the 'ldapfs' section and add each config item as an attribute of
+        # this instance
         config_items = config_parser.get('ldapfs',
-                                         required_config=self.REQUIRED_BASE_CONFIG,
-                                         parse_config=self.PARSE_BASE_CONFIG)
+                                    required_config=self.REQUIRED_BASE_CONFIG,
+                                    parse_config=self.PARSE_BASE_CONFIG)
         self.__dict__.update(config_items)
 
-        # Split out the log level config and use a log file or stdout as appropriate.
+        # Split out the log level config and use a log file or stdout as
+        # appropriate.
         if self.log_file == '-':
             kwargs = {'stream': sys.stdout}
         else:
@@ -88,20 +90,23 @@ class LdapFS(fuse.Fuse):
 
         # Configure logging and set levels
         root_log_level = self.log_levels.pop('root')
-        logging.basicConfig(level=root_log_level, format=self.log_format, **kwargs)
+        logging.basicConfig(level=root_log_level, format=self.log_format,
+                            **kwargs)
         for module, level in self.log_levels.iteritems():
             log = logging.getLogger(module)
             log.setLevel(level)
 
-        # We should have an 'ldapfs' section common to the entire app, and
-        # separate sections for each LDAP host that we are to connect to.
+        # We should have an 'ldapfs' section common to the entire app (parsed
+        # above), and separate sections for each LDAP host that we are to
+        # connect to.
         config_sections = config_parser.get_sections()
         config_sections.remove('ldapfs')
 
         # Save the configuration for each host.
         for section in config_sections:
-            values = config_parser.get(section, required_config=self.REQUIRED_HOST_CONFIG,
-                                       parse_config=self.PARSE_HOST_CONFIG)
+            values = config_parser.get(section,
+                                    required_config=self.REQUIRED_HOST_CONFIG,
+                                    parse_config=self.PARSE_HOST_CONFIG)
             key = values.pop('host')
             self.hosts[key] = values
 
@@ -124,9 +129,10 @@ class LdapFS(fuse.Fuse):
         self.ldap.connect()
 
     # pylint: disable-msg=R0911,R0912
-    # - pylint doesn't like the number of return statements or branches in this method
-    # - I think the logic is represented more cleanly by having multiple returns and
-    #   branches here.
+    # - pylint doesn't like the number of return statements or branches in this
+    #   method
+    # - I think the logic is represented more cleanly by having multiple returns
+    #   and branches here.
     def getattr(self, fspath):
         """Return stat structure for the given path."""
         LOG.debug('ENTER: fspath={}'.format(fspath))
@@ -139,7 +145,8 @@ class LdapFS(fuse.Fuse):
             return fs.Stat(isdir=True)
 
         if not path.has_host_part():
-            LOG.debug("path doesn't match any configured hosts: {}".format(fspath))
+            LOG.debug("path doesn't match any configured hosts: {}"
+                      .format(fspath))
             return -errno.ENOENT
 
         if path.len == 1:
@@ -147,11 +154,12 @@ class LdapFS(fuse.Fuse):
             return fs.Stat(isdir=True)
 
         if not path.has_base_dn_part():
-            LOG.debug("path doesn't match any configured base DNs for host={} path={}".format(path.host, fspath))
+            LOG.debug("path doesn't match any configured base DNs for host={} "
+                      "path={}".format(path.host, fspath))
             return -errno.ENOENT
 
-        # Now we need to find an object that matches the remaining path (without the
-        # leading host and base-dn)
+        # Now we need to find an object that matches the remaining path (without
+        # the leading host and base-dn)
 
         dn = name.DN.create(path.dn_parts)
         try:
@@ -159,7 +167,8 @@ class LdapFS(fuse.Fuse):
                 # We found a matching LDAP object. We're done.
                 return fs.Stat(isdir=True)
         except ldapcon.LdapException as ex:
-            LOG.debug('Exception from ldap.exists for dn={} for fspath={}. {}'.format(dn, fspath, ex))
+            LOG.debug('Exception from ldap.exists for dn={} for fspath={}. {}'.
+                      format(dn, fspath, ex))
             return -errno.ENOENT
 
         if path.len == 2:
@@ -176,10 +185,12 @@ class LdapFS(fuse.Fuse):
 
             entry = self.ldap.get(path.host, parent_dn)[0][1]
         except ldapcon.NoSuchObject:
-            LOG.debug('parent_dn={} not found for fspath={}'.format(parent_dn, fspath))
+            LOG.debug('parent_dn={} not found for fspath={}'.format(parent_dn,
+                                                                    fspath))
             return -errno.ENOENT
         except ldapcon.LdapException as ex:
-            LOG.debug('Exception from ldap.get for parent_dn={} for fspath={} {}'.format(parent_dn, fspath, ex))
+            LOG.debug('Exception from ldap.get for parent_dn={} for '
+                      'fspath={} {}'.format(parent_dn, fspath, ex))
             return -errno.ENOENT
 
         # Check if the filename part matches the special file ".attributes"
@@ -194,8 +205,8 @@ class LdapFS(fuse.Fuse):
                 LOG.debug('PARENT-ENTRY={}'.format(entry))
                 return fs.Stat(isdir=False, lst=attr)
             else:
-                LOG.debug('Attribute={} not found in parent-dn={} for fspath={}'.format(
-                          path.filepart, parent_dn, fspath))
+                LOG.debug('Attribute={} not found in parent-dn={} for '
+                          'fspath={}'.format(path.filepart, parent_dn, fspath))
                 return -errno.ENOENT
 
     def readdir(self, fspath, offset):
@@ -211,7 +222,8 @@ class LdapFS(fuse.Fuse):
             dir_entries.extend(self.hosts.keys())
         else:
             if not path.has_host_part():
-                LOG.debug("path doesn't match any configured hosts: {}".format(fspath))
+                LOG.debug("path doesn't match any configured hosts: {}"
+                          .format(fspath))
                 return
 
             if path.len == 1:
@@ -219,8 +231,8 @@ class LdapFS(fuse.Fuse):
                 dir_entries.extend(self.hosts[path.host]['base_dns'])
             else:
                 if not path.has_base_dn_part():
-                    LOG.debug("path doesn't match any configured base DNs for host={} path={}".format(
-                              path.host, fspath))
+                    LOG.debug("path doesn't match any configured base DNs for "
+                              "host={} path={}".format( path.host, fspath))
                     return
 
                 # Each dir has a .attributes file that contains all attributes
@@ -230,18 +242,21 @@ class LdapFS(fuse.Fuse):
                 try:
                     dn = name.DN(path.dn_parts)
                     base = self.ldap.get(path.host, dn, attrsonly=True)[0][1]
-                    # Each attribute of the LDAP object is represented as a directory
-                    # entry. A later getattr() call on these names will tell Fuse that
-                    # these are files.
+                    # Each attribute of the LDAP object is represented as a
+                    # directory entry. A later getattr() call on these names
+                    # will tell Fuse that these are files.
                     dir_entries.extend(base.keys())
 
-                    entries = self.ldap.search(path.host, dn, recur=False, attrsonly=True)
-                    dir_entries.extend([name.DN.to_filename(entry[0], str(dn)) for entry in entries])
+                    entries = self.ldap.search(path.host, dn, recur=False,
+                                               attrsonly=True)
+                    dir_entries.extend([name.DN.to_filename(entry[0], str(dn))
+                                       for entry in entries])
                 except InvalidDN:
                     LOG.debug('Invalid DN for fspath={}'.format(fspath))
                     return
                 except LdapException as ex:
-                    LOG.error('Error reading dn={} for fspath={}. {}'.format(dn, fspath, ex))
+                    LOG.error('Error reading dn={} for fspath={}. {}'.
+                              format(dn, fspath, ex))
                     return
 
         for ent in dir_entries:
@@ -250,7 +265,8 @@ class LdapFS(fuse.Fuse):
 
     def read(self, fspath, size, offset):
         """Read the file entry at the given path, size and offset."""
-        LOG.debug('ENTER: fspath={} size={} offset={}'.format(fspath, size, offset))
+        LOG.debug('ENTER: fspath={} size={} offset={}'
+                  .format(fspath, size, offset))
 
         path = name.Path(fspath, self.hosts)
         if path.len < 3:
@@ -258,12 +274,13 @@ class LdapFS(fuse.Fuse):
             return -errno.ENOENT
 
         if not path.has_host_part():
-            LOG.debug("path doesn't match any configured hosts: {}".format(fspath))
+            LOG.debug("path doesn't match any configured hosts: {}"
+                      .format(fspath))
             return
 
         if not path.has_base_dn_part():
-            LOG.debug("path doesn't match any configured base DNs for host={} path={}".format(
-                      path.host, fspath))
+            LOG.debug("path doesn't match any configured base DNs for host={} "
+                      "path={}".format(path.host, fspath))
             return -errno.ENOENT
 
         try:
@@ -278,19 +295,22 @@ class LdapFS(fuse.Fuse):
             LOG.debug('dn={} not found for fspath={}'.format(dn, fspath))
             return -errno.ENOENT
         except LdapException as ex:
-            LOG.debug('Exception from ldap.get for dn={} for fspath={}. {}'.format(dn, fspath, ex))
+            LOG.debug('Exception from ldap.get for dn={} for fspath={}. {}'.
+                      format(dn, fspath, ex))
             return -errno.ENOENT
 
         LOG.debug('entry={}'.format(entry))
         if path.filepart == self.ATTRIBUTES_FILENAME:
             # Return name=value on separate lines for all attributes
-            retval = '\n'.join(['{}={}'.format(key, ','.join(val)) for key, val in entry.iteritems()]) + '\n'
+            retval = '\n'.join(['{}={}'.format(key, ','.join(val)) 
+                               for key, val in entry.iteritems()]) + '\n'
         else:
             attr = entry.get(path.filepart)
             if attr:
                 retval = ','.join(attr) + '\n'
             else:
-                LOG.debug('Attribute={} not found in dn={} for fspath={}'.format(path.filepart, dn, fspath))
+                LOG.debug('Attribute={} not found in dn={} for fspath={}'
+                          .format(path.filepart, dn, fspath))
                 return -errno.ENOENT
 
         return retval[offset:size]
@@ -300,7 +320,8 @@ class LdapFS(fuse.Fuse):
         """Run the LdapFS server."""
         ldapfs = None
         try:
-            ldapfs = LdapFS(version='%prog ' + fuse.__version__, usage='usage', dash_s_do='setsingle')
+            ldapfs = LdapFS(version='%prog ' + fuse.__version__, usage='usage',
+                            dash_s_do='setsingle')
             ldapfs.main()
         except (LdapfsException, fuse.FuseError) as main_ex:
             LOG.error(str(main_ex))

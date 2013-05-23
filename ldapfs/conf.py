@@ -13,7 +13,8 @@ class ConfigFile(object):
         self.config_path = config_path
         self.parser = ConfigParser.SafeConfigParser()
         if not self.parser.read(config_path):
-            raise ConfigError('Error accessing config file: {}'.format(config_path))
+            raise ConfigError('Error accessing config file: {}'.
+                              format(config_path))
 
     def get_sections(self):
         """Return the names of the config file sections."""
@@ -22,11 +23,13 @@ class ConfigFile(object):
     def get(self, section, required_config=None, parse_config=None):
         """Parse a config file section and return a dict of its contents."""
         try:
-            config = dict([(key, value.strip("'\" ")) for key, value in self.parser.items(section)])
+            config = dict([(key, value.strip("'\" "))
+                          for key, value in self.parser.items(section)])
 
             for key in required_config or []:
                 if not config.get(key):
-                    raise ConfigError('Error in config file "{}". Missing key "{}"'.format(self.config_path, key))
+                    raise ConfigError('Error in config file "{}". Missing key '
+                                      '"{}"'.format(self.config_path, key))
 
             for key, parse_fn in parse_config or []:
                 if parse_fn:
@@ -46,7 +49,8 @@ class ConfigFile(object):
         try:
             return int(intstr)
         except ValueError:
-            raise ConfigError('Failed to convert "{}" to an integer value'.format(intstr))
+            raise ConfigError('Failed to convert "{}" to an integer value'
+                              .format(intstr))
 
     @staticmethod
     def parse_bool(boolstr):
@@ -59,7 +63,8 @@ class ConfigFile(object):
         elif bool_lower in ['false', '0']:
             return False
         else:
-            raise ConfigError('Failed to convert "{}" to a boolean value'.format(boolstr))
+            raise ConfigError('Failed to convert "{}" to a boolean value'.
+                              format(boolstr))
 
     @staticmethod
     def parse_dir(dirname):
@@ -81,6 +86,7 @@ class ConfigFile(object):
             raise ConfigError('Invalid log levels: "{}"'.format(log_str))
 
         if 'root' not in dct:
-            raise ConfigError('No entry for root logger in: "{}"'.format(log_str))
+            raise ConfigError('No entry for root logger in: "{}"'
+                              .format(log_str))
 
         return dct
