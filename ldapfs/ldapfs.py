@@ -7,6 +7,7 @@ Usage: ldapfs.py -o config=<config-file-path> <mountpoint>
 To unmount: fusermount -u <mountpoint>
 """
 
+import os
 import sys
 import errno
 import fuse
@@ -18,6 +19,7 @@ from .ldapconf import LdapConfigFile
 from . import ldapcon
 from . import name
 from . import fs
+from . import trace
 
 LOG = logging.getLogger(__name__)
 fuse.fuse_python_api = (0, 2)
@@ -55,9 +57,15 @@ class LdapFS(fuse.Fuse):
         # This will set self.config if -o config=file was specified on the command line
         args = fuse.Fuse.parse(self, values=self, errex=1)
 
+        #trace.start(os.path.dirname(__file__))
+
         # Sets instance vars with names from REQUIRED_BASE_CONFIG and
         # self.hosts keyed by hostname
         self._apply_config()
+
+    
+    #def __del__(self):
+        #trace.stop()
 
     def _apply_config(self):
         """Parse the config file and apply the config settings.
