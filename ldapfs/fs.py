@@ -50,7 +50,7 @@ class Stat(fuse.Stat):
         self.__dict__.update(inst_dict)
 
     def __str__(self):
-        return '|'.join(['{}={}'.format(k, getattr(k)) for k in Stat.ATTRS])
+        return '|'.join(['{}={}'.format(k, getattr(self, k)) for k in Stat.ATTRS])
 
     @staticmethod
     def _dict_size(attr_dct):
