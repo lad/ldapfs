@@ -26,6 +26,12 @@ build: virtualenv
 	$(PIP) -r requirements.txt
 	$(PYTHON) setup.py develop
 
+sdist: virtualenv
+	$(PYTHON) setup.py sdist
+
+bdist: virtualenv
+	$(PYTHON) setup.py bdist
+
 $(PYLINTRC):
 	$(SED) "s%##REPLACE##%$(VENV)%" "$(PYLINTRC_SRC)" >| "$(PYLINTRC)"
 
