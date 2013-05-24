@@ -9,6 +9,9 @@ python-ldap. It allows you to mount an LDAP hierarchy as a set of
 files and directories on disk. It is most useful for examining an existing
 hierarchy.
 
+This is pre 1.0 code. It works but is read only and is very inefficient. Basic
+caching is next on the agenda, then write support.
+
 **I use this solely for development purposes. It has never been used in
 production**
 
@@ -65,7 +68,7 @@ LDAP servers, credentials and base DNs to mount.
     bind_dn = cn=Directory Manager
     bind_password = password
     # The base DNs should be each be listed within double-quotes (") and be separated by one or more spaces
-    base_dns = "dc=dell,dc=com" "cn=schema" "cn=monitor" "cn=config" "cn=backups" "cn=admin data" "cn=tasks" "cn=ads-truststore"
+    base_dns = "cn=schema" "cn=monitor" "cn=config" "cn=backups" "cn=admin data" "cn=tasks" "cn=ads-truststore"
 
     [LDAP Server 2]
     host = openldap.example.com
