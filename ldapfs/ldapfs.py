@@ -31,14 +31,13 @@ class LdapFS(fuse.Fuse):
 
     DEFAULT_CONFIG = '/etc/ldapfs/ldapfs.cfg'
     ATTRIBUTES_FILENAME = '.attributes'
-    REQUIRED_BASE_CONFIG = ['log_file', 'log_format', 'log_levels',
-                            'ldap_trace_level']
-    PARSE_BASE_CONFIG = [('log_levels', LdapConfigFile.parse_log_levels),
-                         ('ldap_trace_level', LdapConfigFile.parse_int)]
+    REQUIRED_BASE_CONFIG = ['log_file', 'log_format', 'log_levels']
+    PARSE_BASE_CONFIG = [('log_levels', LdapConfigFile.parse_log_levels)]
     REQUIRED_HOST_CONFIG = ['host', 'port', 'base_dns', 'bind_dn',
-                            'bind_password']
+                            'bind_password', 'ldap_trace_level']
     PARSE_HOST_CONFIG = [('port', LdapConfigFile.parse_int),
-                         ('base_dns', LdapConfigFile.validate_dns)]
+                         ('base_dns', LdapConfigFile.validate_dns),
+                         ('ldap_trace_level', LdapConfigFile.parse_int)]
 
     def __init__(self, *args, **kwargs):
         """Construct an LdapFS object absed on the Fuse class.
@@ -46,6 +45,7 @@ class LdapFS(fuse.Fuse):
            :raises: ConfigError, fuse.FuseError
         """
         fuse.Fuse.__init__(self, *args, **kwargs)
+        self.cache = None
         self.flags = 0
         self.multithreaded = 0
         self.ldap = None
@@ -66,7 +66,6 @@ class LdapFS(fuse.Fuse):
         # self.hosts keyed by hostname
         self._apply_config()
 
-    
     def _apply_config(self):
         """Parse the config file and apply the config settings.
 
@@ -129,13 +128,14 @@ class LdapFS(fuse.Fuse):
         self.ldap.connect()
 
     # pylint: disable-msg=R0911,R0912
-    # - pylint doesn't like the number of return statements or branches in this
-    #   method
-    # - I think the logic is represented more cleanly by having multiple returns
-    #   and branches here.
+    # - pylint doesn't like the number of return statements or branches in
+    #   this method
+    # - I think the logic is represented more cleanly by having multiple
+    # returns and branches here.
     def getattr(self, fspath):
         """Return stat structure for the given path."""
         LOG.debug('ENTER: fspath={}'.format(fspath))
+
         path = name.Path(fspath, self.hosts)
         if not path:
             LOG.debug('Empty path')
@@ -158,8 +158,8 @@ class LdapFS(fuse.Fuse):
                       "path={}".format(path.host, fspath))
             return -errno.ENOENT
 
-        # Now we need to find an object that matches the remaining path (without
-        # the leading host and base-dn)
+        # Now we need to find an object that matches the remaining path
+        # (without the leading host and base-dn)
 
         dn = name.DN.create(path.dn_parts)
         try:
@@ -183,7 +183,7 @@ class LdapFS(fuse.Fuse):
                 LOG.debug('Invalid parent DN for fspath={}'.format(fspath))
                 return -errno.ENOENT
 
-            entry = self.ldap.get(path.host, parent_dn)[0][1]
+            entry = self.ldap.get(path.host, parent_dn)
         except ldapcon.NoSuchObject:
             LOG.debug('parent_dn={} not found for fspath={}'.format(parent_dn,
                                                                     fspath))
@@ -232,7 +232,7 @@ class LdapFS(fuse.Fuse):
             else:
                 if not path.has_base_dn_part():
                     LOG.debug("path doesn't match any configured base DNs for "
-                              "host={} path={}".format( path.host, fspath))
+                              "host={} path={}".format(path.host, fspath))
                     return
 
                 # Each dir has a .attributes file that contains all attributes
@@ -241,7 +241,7 @@ class LdapFS(fuse.Fuse):
 
                 try:
                     dn = name.DN(path.dn_parts)
-                    base = self.ldap.get(path.host, dn, attrsonly=True)[0][1]
+                    base = self.ldap.get(path.host, dn, attrsonly=True)
                     # Each attribute of the LDAP object is represented as a
                     # directory entry. A later getattr() call on these names
                     # will tell Fuse that these are files.
@@ -286,7 +286,7 @@ class LdapFS(fuse.Fuse):
         try:
             # Look for an LDAP object matching the directory name
             dn = name.DN.create_parent(path.dn_parts)
-            entry = self.ldap.get(path.host, dn)[0][1]
+            entry = self.ldap.get(path.host, dn)
             LOG.debug('Entry={}'.format(entry))
         except InvalidDN:
             LOG.debug('Invalid dn from fspath={}'.format(fspath))
@@ -302,7 +302,7 @@ class LdapFS(fuse.Fuse):
         LOG.debug('entry={}'.format(entry))
         if path.filepart == self.ATTRIBUTES_FILENAME:
             # Return name=value on separate lines for all attributes
-            retval = '\n'.join(['{}={}'.format(key, ','.join(val)) 
+            retval = '\n'.join(['{}={}'.format(key, ','.join(val))
                                for key, val in entry.iteritems()]) + '\n'
         else:
             attr = entry.get(path.filepart)
