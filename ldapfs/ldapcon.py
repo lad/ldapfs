@@ -15,9 +15,8 @@ class Connection(object):
 
     recur_to_scope = {False: ldap.SCOPE_ONELEVEL, True: ldap.SCOPE_SUBTREE}
 
-    def __init__(self, hosts, ldap_trace_level=0):
+    def __init__(self, hosts):
         self.hosts = hosts.copy()
-        self.ldap_trace_level = ldap_trace_level
 
     def connect(self):
         """Connect to all configured LDAP hosts."""
@@ -26,7 +25,7 @@ class Connection(object):
                 bind_uri = 'ldap://{}:{}'.format(host, values['port'])
                 LOG.debug('Binding to uri={}'.format(bind_uri))
                 con = ldap.initialize(bind_uri,
-                                      trace_level=self.ldap_trace_level)
+                                      trace_level=values['ldap_trace_level'])
                 con.set_option(ldap.OPT_NETWORK_TIMEOUT, 2.0)
                 con.simple_bind_s(values['bind_dn'], values['bind_password'])
                 values['con'] = con
@@ -46,14 +45,29 @@ class Connection(object):
             return False
 
     def get(self, host, dn, attrsonly=False):
-        """Retrieve the LDAP obejct at the given DN on the given server."""
+        """Retrieve a single obejct at the given DN on the given server.
+
+        Return a dictionary of attribute names/values"""
         LOG.debug('ENTER: host={} dn={} attrsonly={}'
                   .format(host, dn, attrsonly))
-        return self._search(host, dn, ldap.SCOPE_BASE, attrsonly)
+        _, entry = self._search(host, dn, ldap.SCOPE_BASE, attrsonly)[0]
+        return entry
 
+    def getm(self, host, dn, attrsonly=False):
+        """Retrieve multiple obejcts at the given DN on the given server.
+
+        Return a list of dictionaries of attribute name/values."""
+        LOG.debug('ENTER: host={} dn={} attrsonly={}'
+                  .format(host, dn, attrsonly))
+        return [entry for _, entry in
+                self._search(host, dn, ldap.SCOPE_BASE, attrsonly)]
 
     def search(self, host, dn, recur=False, attrsonly=False):
-        """Search for the LDAP obejcts at the given DN on the given server."""
+        """Search for the LDAP obejcts at the given DN on the given server.
+
+        Return a list of tuples, each one containing the DN of the LDAP
+        object and a dictionary of its contents. The dictionary contains the
+        attribute name/values of the object."""
         LOG.debug('ENTER: host={} dn={} recur={} attrsonly={}'
                   .format(host, dn, recur, attrsonly))
         scope = self.recur_to_scope.get(bool(recur))

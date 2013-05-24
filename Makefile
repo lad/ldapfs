@@ -39,7 +39,7 @@ pylint: virtualenv build $(PYLINTRC)
 	$(PYLINT) --rcfile="$(PYLINTRC)" ldapfs
 
 clean:
-	rm -rf $(VENV) build dist *.egg-info
+	rm -rf $(VENV) build dist *.egg-info log
 
 dist-clean: clean
 	rm -rf $(PIP_DOWNLOAD_CACHE)
