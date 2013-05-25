@@ -32,7 +32,7 @@ sdist: virtualenv
 bdist: virtualenv
 	$(PYTHON) setup.py bdist
 
-$(PYLINTRC):
+$(PYLINTRC): $(PYLINTRC_SRC)
 	$(SED) "s%##REPLACE##%$(VENV)%" "$(PYLINTRC_SRC)" >| "$(PYLINTRC)"
 
 pylint: virtualenv build $(PYLINTRC)
