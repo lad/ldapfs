@@ -37,7 +37,6 @@ class Connection(object):
 
     def exists(self, host, dn):
         """Check if the given DN exists on the given server."""
-        LOG.debug('ENTER: host={} dn={}'.format(host, dn))
         try:
             self._search(host, dn, ldap.SCOPE_BASE, True)
             return True
@@ -48,17 +47,12 @@ class Connection(object):
         """Retrieve a single obejct at the given DN on the given server.
 
         Return a dictionary of attribute names/values"""
-        LOG.debug('ENTER: host={} dn={} attrsonly={}'
-                  .format(host, dn, attrsonly))
-        _, entry = self._search(host, dn, ldap.SCOPE_BASE, attrsonly)[0]
-        return entry
+        return self._search(host, dn, ldap.SCOPE_BASE, attrsonly)[0][1]
 
     def getm(self, host, dn, attrsonly=False):
         """Retrieve multiple obejcts at the given DN on the given server.
 
         Return a list of dictionaries of attribute name/values."""
-        LOG.debug('ENTER: host={} dn={} attrsonly={}'
-                  .format(host, dn, attrsonly))
         return [entry for _, entry in
                 self._search(host, dn, ldap.SCOPE_BASE, attrsonly)]
 
@@ -68,9 +62,7 @@ class Connection(object):
         Return a list of tuples, each one containing the DN of the LDAP
         object and a dictionary of its contents. The dictionary contains the
         attribute name/values of the object."""
-        LOG.debug('ENTER: host={} dn={} recur={} attrsonly={}'
-                  .format(host, dn, recur, attrsonly))
-        scope = self.recur_to_scope.get(bool(recur))
+        scope = self.recur_to_scope[bool(recur)]
         return self._search(host, dn, scope, attrsonly)
 
     def _search(self, host, dn, scope, attrsonly):
