@@ -11,7 +11,6 @@ import sys
 import errno
 import fuse
 import logging
-import pprint
 import os
 
 from .exceptions import LdapfsException, LdapException, InvalidDN, NoSuchObject
@@ -118,9 +117,6 @@ class LdapFS(fuse.Fuse):
 
         self.ldap = ldapcon.Connection(self.hosts)
 
-        LOG.debug('ldapfs-config={}'.format(pprint.pformat(config_items)))
-        LOG.debug('hosts-config={}'.format(pprint.pformat(self.hosts)))
-
     def fsinit(self):
         """Start the connections to the LDAP server(s).
 
@@ -214,7 +210,7 @@ class LdapFS(fuse.Fuse):
                           'fspath={}'.format(path.filepart, parent_dn, fspath))
                 return -errno.ENOENT
 
-    def readdir(self, fspath, offset):
+    def readdir(self, fspath, _):
         """Read the given directory path and yield its contents."""
         dir_entries = ['.', '..']
 
