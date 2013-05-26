@@ -7,3 +7,5 @@ ldapfs.egg-info
 dev/venv
 log
 ldapfs.log
+trace
+trace.txt

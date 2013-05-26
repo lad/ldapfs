@@ -5,6 +5,7 @@ Multiple LDAP servers and base-dns are supported at once."""
 
 import ldap
 import logging
+
 from .exceptions import LdapException, InvalidDN, NoSuchObject, NoSuchHost
 
 LOG = logging.getLogger(__name__)
