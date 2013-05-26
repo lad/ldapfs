@@ -13,7 +13,6 @@ class Path(object):
     """An abstraction for the file system paths passed to FUSE API methods."""
 
     def __init__(self, fspath, hosts):
-        LOG.debug('ENTER: fspath={} hosts={}'.format(fspath, hosts))
         self.fspath = fspath
         self.dirpart, self.filepart = os.path.split(fspath)
 
@@ -52,7 +51,6 @@ class DN(object):
     """An abstraction of an LDAP DN."""
 
     def __init__(self, parts):
-        LOG.debug('ENTER: parts={}'.format(parts))
         self.parts = parts
         if parts:
             self.dn = DN.unescape_path(','.join(reversed(parts)))
@@ -70,7 +68,6 @@ class DN(object):
     @staticmethod
     def create(parts):
         """Return a DN instance or None if the resulting dn is not valid."""
-        LOG.debug('ENTER: parts={}'.format(parts))
         try:
             return DN(parts)
         except InvalidDN:
@@ -79,9 +76,7 @@ class DN(object):
     @staticmethod
     def create_parent(parts):
         """Return a DN instance or None if the parent dn is not valid."""
-        LOG.debug('ENTER: parts={}'.format(parts))
         pparts = len(parts) > 1 and parts[:-1] or []
-        LOG.debug('pparts={}'.format(pparts))
         try:
             return DN(pparts)
         except InvalidDN:
@@ -90,13 +85,11 @@ class DN(object):
     @staticmethod
     def to_filename(dn, parent_dn):
         """Convert the given DN to a filename."""
-        LOG.debug('ENTER: dn={} parent_dn={}'.format(dn, parent_dn))
         path = dn.split(parent_dn)[0]
         # If the path ends with a non-escaped "," character chop it off
         if path.endswith(',') and not (len(path) >= 2 and path[-2] == '\\'):
             path = path[:-1]
         path = DN.escape_path(path)
-        LOG.debug('path={}'.format(path))
         return path
 
     @staticmethod
@@ -108,11 +101,9 @@ class DN(object):
         however. So here we convert path separators to %2F. Here we need to do
         the opposite and convert back.
         """
-        LOG.debug('ENTER: path={}'.format(path))
         return path.replace(os.path.sep, '%%-path-sep-%%')
 
     @staticmethod
     def unescape_path(path):
         """Unescape characters from previously escaped path."""
-        LOG.debug('ENTER: path={}'.format(path))
         return path.replace('%%-path-sep-%%', os.path.sep)

@@ -12,12 +12,14 @@ import errno
 import fuse
 import logging
 import pprint
+import os
 
 from .exceptions import LdapfsException, LdapException, InvalidDN, NoSuchObject
 from .ldapconf import LdapConfigFile
 from . import ldapcon
 from . import name
 from . import fs
+from . import trace
 
 LOG = logging.getLogger(__name__)
 fuse.fuse_python_api = (0, 2)
@@ -49,9 +51,10 @@ class LdapFS(fuse.Fuse):
         self.flags = 0
         self.multithreaded = 0
         self.ldap = None
+        self.hosts = {}
+        self.trace_file = None
 
         # Path to the config file
-        self.hosts = {}
         self.config = self.DEFAULT_CONFIG
         # Tell Fuse about our argument: -o config=<config-file>
         self.parser.add_option(mountopt='config', metavar='CONFIG',
@@ -78,20 +81,24 @@ class LdapFS(fuse.Fuse):
         config_items = config_parser.get('ldapfs',
                                     required_config=self.REQUIRED_BASE_CONFIG,
                                     parse_config=self.PARSE_BASE_CONFIG)
-        self.__dict__.update(config_items)
+
+        self.trace_file = config_items.get('trace_file')
+        if self.trace_file:
+            trace.start(self.trace_file, os.path.dirname(__file__))
 
         # Split out the log level config and use a log file or stdout as
         # appropriate.
-        if self.log_file == '-':
+        if config_items['log_file'] == '-':
             kwargs = {'stream': sys.stdout}
         else:
-            kwargs = {'filename': self.log_file}
+            kwargs = {'filename': config_items['log_file']}
 
         # Configure logging and set levels
-        root_log_level = self.log_levels.pop('root')
-        logging.basicConfig(level=root_log_level, format=self.log_format,
+        root_log_level = config_items['log_levels'].pop('root')
+        logging.basicConfig(level=root_log_level,
+                            format=config_items['log_format'],
                             **kwargs)
-        for module, level in self.log_levels.iteritems():
+        for module, level in config_items['log_levels'].iteritems():
             log = logging.getLogger(module)
             log.setLevel(level)
 
@@ -131,11 +138,9 @@ class LdapFS(fuse.Fuse):
     # - pylint doesn't like the number of return statements or branches in
     #   this method
     # - I think the logic is represented more cleanly by having multiple
-    # returns and branches here.
+    #   returns and branches here.
     def getattr(self, fspath):
         """Return stat structure for the given path."""
-        LOG.debug('ENTER: fspath={}'.format(fspath))
-
         path = name.Path(fspath, self.hosts)
         if not path:
             LOG.debug('Empty path')
@@ -211,7 +216,6 @@ class LdapFS(fuse.Fuse):
 
     def readdir(self, fspath, offset):
         """Read the given directory path and yield its contents."""
-        LOG.debug('ENTER: fspath={} offset={}'.format(fspath, offset))
         dir_entries = ['.', '..']
 
         path = name.Path(fspath, self.hosts)
@@ -265,9 +269,6 @@ class LdapFS(fuse.Fuse):
 
     def read(self, fspath, size, offset):
         """Read the file entry at the given path, size and offset."""
-        LOG.debug('ENTER: fspath={} size={} offset={}'
-                  .format(fspath, size, offset))
-
         path = name.Path(fspath, self.hosts)
         if path.len < 3:
             # There are no files in the first two directories (host/base-dn)
@@ -315,14 +316,19 @@ class LdapFS(fuse.Fuse):
 
         return retval[offset:size]
 
+    def main(self, *args):
+        try:
+            fuse.Fuse.main(self, *args)
+        finally:
+            if self.trace_file:
+                trace.stop()
+
     @staticmethod
     def run():
         """Run the LdapFS server."""
-        ldapfs = None
         try:
-            ldapfs = LdapFS(version='%prog ' + fuse.__version__, usage='usage',
-                            dash_s_do='setsingle')
-            ldapfs.main()
+            LdapFS(version='%prog ' + fuse.__version__, usage='usage',
+                            dash_s_do='setsingle').main()
         except (LdapfsException, fuse.FuseError) as main_ex:
             LOG.error(str(main_ex))
             print main_ex

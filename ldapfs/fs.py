@@ -63,11 +63,8 @@ class Stat(fuse.Stat):
         of the value. The value is assumed to be a list of items as required by
         _list_size below. The value includes space for a trailing newline.
         """
-        LOG.debug('ENTER: attr_dct={}'.format(attr_dct))
-        entry_sum = sum([len(key) + 1 + Stat._list_size(vals)
-                         for key, vals in attr_dct.iteritems()])
-        LOG.debug('sum={}'.format(entry_sum))
-        return entry_sum
+        return sum([len(key) + 1 + Stat._list_size(vals)
+                    for key, vals in attr_dct.iteritems()])
 
     @staticmethod
     def _list_size(lst):
@@ -76,13 +73,7 @@ class Stat(fuse.Stat):
         The size returned is sum of the lengths of each item in the list + a
         comma between each item in the list + a newline.
         """
-        LOG.debug('ENTER: lst={}'.format(lst))
-        size = sum([len(val) for val in lst])
-        # This accounts for the commas that we'll use between values + a
-        # newline ('\n')
-        size += len(lst)
-        LOG.debug('size={}'.format(size))
-        return size
+        return sum([len(val) for val in lst]) + len(lst)
 
     @staticmethod
     def size2blocks(size):
