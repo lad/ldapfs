@@ -31,6 +31,9 @@ class Path(object):
             self.base_dn = None
             self.dn_parts = []
 
+    def __str__(self):
+        return 'Path({})'.format(self.fspath)
+
     def __nonzero__(self):
         return self.len != 0
 
