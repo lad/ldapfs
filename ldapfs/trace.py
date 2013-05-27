@@ -19,9 +19,12 @@ class Tracer(object):
 
     def __init__(self, trace_file, filter_dir):
         self.filter_dir = filter_dir
-        if os.path.isfile(trace_file):
-            os.remove(trace_file)
-        handler = logging.FileHandler(trace_file)
+        if trace_file == "-":
+            handler = logging.StreamHandler()
+        else:
+            if os.path.isfile(trace_file):
+                os.remove(trace_file)
+            handler = logging.FileHandler(trace_file)
         handler.setLevel(logging.DEBUG)
         handler.setFormatter(logging.Formatter('%(message)s'))
         LOG.addHandler(handler)
@@ -47,12 +50,20 @@ class Tracer(object):
             cls = ''
 
         # Get the function args from the stack frame
-        (args, varargs, kwargs, local) = inspect.getargvalues(frame)
-        args = ['{}={}'.format(aname, local[aname]) for aname in args]
-        if varargs:
-            args.append('{}={}'.format(varargs, local[varargs]))
-        if kwargs:
-            args.append('{}={}'.format(kwargs, local[kwargs]))
+        (arg_names, varg_name, kw_name, f_locals) = inspect.getargvalues(frame)
+        if name == '__init__' and 'self' in arg_names:
+            # Don't try to format self. The object will not be constructed
+            # yet. Print a repr instead.
+            arg_names.remove('self')
+            args = ['self={}'.format(repr(f_locals['self']))]
+        else:
+            args = []
+        args.extend(['{}={}'.format(aname, f_locals[aname])
+                    for aname in arg_names])
+        if varg_name:
+            args.append('{}={}'.format(varg_name, f_locals[varg_name]))
+        if kw_name:
+            args.append('{}={}'.format(kw_name, f_locals[kw_name]))
 
         if event == 'call':
             msg = '{}.{}:{}({})' \
