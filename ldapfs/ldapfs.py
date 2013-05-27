@@ -168,8 +168,8 @@ class LdapFS(fuse.Fuse):
                 # We found a matching LDAP object. We're done.
                 return fs.Stat(isdir=True)
         except ldapcon.LdapException as ex:
-            LOG.debug('Exception from ldap.exists for dn={} for fspath={}. {}'.
-                      format(dn, fspath, ex))
+            LOG.debug('Exception from ldap.exists for dn={} for fspath={}. {}'
+                      .format(dn, fspath, ex))
             return -errno.ENOENT
 
         if path.len == 2:
@@ -194,21 +194,11 @@ class LdapFS(fuse.Fuse):
                       'fspath={} {}'.format(parent_dn, fspath, ex))
             return -errno.ENOENT
 
-        # Check if the filename part matches the special file ".attributes"
-        if path.filepart == self.ATTRIBUTES_FILENAME:
-            LOG.debug('Return {}'.format(self.ATTRIBUTES_FILENAME))
-            return fs.Stat(isdir=False, dct=entry)
+        size = entry.size(path.filepart)
+        if size:
+            return fs.Stat(isdir=False, size=size)
         else:
-            # We have the parent object. Check if there's an attribute with the
-            # same name as the input filename
-            attr = entry.get(path.filepart)
-            if attr:
-                LOG.debug('PARENT-ENTRY={}'.format(entry))
-                return fs.Stat(isdir=False, lst=attr)
-            else:
-                LOG.debug('Attribute={} not found in parent-dn={} for '
-                          'fspath={}'.format(path.filepart, parent_dn, fspath))
-                return -errno.ENOENT
+            return -errno.ENOENT
 
     def readdir(self, fspath, _):
         """Read the given directory path and yield its contents."""
@@ -245,18 +235,18 @@ class LdapFS(fuse.Fuse):
                     # Each attribute of the LDAP object is represented as a
                     # directory entry. A later getattr() call on these names
                     # will tell Fuse that these are files.
-                    dir_entries.extend(base.keys())
+                    dir_entries.extend(base.names())
 
                     entries = self.ldap.search(path.host, dn, recur=False,
                                                attrsonly=True)
-                    dir_entries.extend([name.DN.to_filename(entry[0], str(dn))
+                    dir_entries.extend([name.DN.to_filename(entry.dn, str(dn))
                                        for entry in entries])
                 except InvalidDN:
                     LOG.debug('Invalid DN for fspath={}'.format(fspath))
                     return
                 except LdapException as ex:
-                    LOG.error('Error reading dn={} for fspath={}. {}'.
-                              format(dn, fspath, ex))
+                    LOG.error('Error reading dn={} for fspath={}. {}'
+                              .format(dn, fspath, ex))
                     return
 
         for ent in dir_entries:
@@ -292,25 +282,17 @@ class LdapFS(fuse.Fuse):
             LOG.debug('dn={} not found for fspath={}'.format(dn, fspath))
             return -errno.ENOENT
         except LdapException as ex:
-            LOG.debug('Exception from ldap.get for dn={} for fspath={}. {}'.
-                      format(dn, fspath, ex))
+            LOG.debug('Exception from ldap.get for dn={} for fspath={}. {}'
+                      .format(dn, fspath, ex))
             return -errno.ENOENT
 
-        LOG.debug('entry={}'.format(entry))
-        if path.filepart == self.ATTRIBUTES_FILENAME:
-            # Return name=value on separate lines for all attributes
-            retval = '\n'.join(['{}={}'.format(key, ','.join(val))
-                               for key, val in entry.iteritems()]) + '\n'
+        text = entry.text(path.filepart)
+        if text:
+            return text[offset:size]
         else:
-            attr = entry.get(path.filepart)
-            if attr:
-                retval = ','.join(attr) + '\n'
-            else:
-                LOG.debug('Attribute={} not found in dn={} for fspath={}'
-                          .format(path.filepart, dn, fspath))
-                return -errno.ENOENT
+            return -errno.ENOENT
 
-        return retval[offset:size]
+        return text[offset:size]
 
     def main(self, *args):
         try:

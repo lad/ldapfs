@@ -31,13 +31,8 @@ class Stat(fuse.Stat):
              'st_blksize': 0,
              'st_ino': 0}
 
-    def __init__(self, isdir=True, dct=None, lst=None):
+    def __init__(self, isdir=True, size=DIR_SIZE):
         fuse.Stat.__init__(self)
-        if isdir:
-            size = self.DIR_SIZE
-        else:
-            size = (dct and self._dict_size(dct) or 0) + \
-                   (lst and self._list_size(lst) or 0)
         now = int(time())
         inst_dict = {'st_mode': isdir and Stat.DIR_MODE or Stat.FILE_MODE,
                      'st_size': size,
@@ -53,27 +48,6 @@ class Stat(fuse.Stat):
     def __str__(self):
         return '|'.join(['{}={}'.format(k, getattr(self, k))
                          for k in Stat.ATTRS])
-
-    @staticmethod
-    def _dict_size(attr_dct):
-        """Return the file size needed to represent the given dictionary.
-
-        The file size is the sum of the sizes for each entry in the dictionary.
-        Each entry size is the length of the key + 1 for an equals + the size
-        of the value. The value is assumed to be a list of items as required by
-        _list_size below. The value includes space for a trailing newline.
-        """
-        return sum([len(key) + 1 + Stat._list_size(vals)
-                    for key, vals in attr_dct.iteritems()])
-
-    @staticmethod
-    def _list_size(lst):
-        """Return the file size needed to represent the given list of items.
-
-        The size returned is sum of the lengths of each item in the list + a
-        comma between each item in the list + a newline.
-        """
-        return sum([len(val) for val in lst]) + len(lst)
 
     @staticmethod
     def size2blocks(size):
