@@ -13,7 +13,7 @@ LOG = logging.getLogger(__name__)
 
 class Tracer(object):
     """Trace functions with args and return values.
-    
+
        Setup with: sys.settrace(Tracer(trace_file, filter_dir))
     """
 

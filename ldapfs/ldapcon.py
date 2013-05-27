@@ -11,6 +11,44 @@ from .exceptions import LdapException, InvalidDN, NoSuchObject, NoSuchHost
 LOG = logging.getLogger(__name__)
 
 
+class Entry(object):
+    """A thin wrapper for an LDAP Entry with conversion to/from strings."""
+
+    ATTRIBUTES_FILENAME = '.attributes'
+
+    def __init__(self, dn, attrs):
+        self.dn = dn
+        self.attrs = attrs
+
+    def text(self, attr_name):
+        """Return text representing this LDAP entry.
+
+        Attributes are represented as value,value,...
+        A special name ".attributes" is used to denote all attributes where
+        the return value is name=value,value,... for all attributes in the
+        entry."""
+        if attr_name == self.ATTRIBUTES_FILENAME:
+            # Return name=value,value,... on separate lines for all attributes
+            retval = '\n'.join(['{}={}'.format(key, ','.join(vals))
+                               for key, vals in self.attrs.iteritems()]) + '\n'
+        else:
+            vals = self.attrs.get(attr_name)
+            if vals:
+                # Return value,value, ...
+                retval = ','.join(vals) + '\n'
+            else:
+                retval = None
+        return retval
+
+    def names(self):
+        """Return the attribute names only."""
+        return self.attrs.keys()
+
+    def size(self, attr_name):
+        """Return the size of text representation of the given attribute."""
+        return len(self.text(attr_name))
+
+
 class Connection(object):
     """An abstraction of an LDAP connection supporting multiple servers."""
 
@@ -45,20 +83,19 @@ class Connection(object):
             return False
 
     def get(self, host, dn, attrsonly=False):
-        """Retrieve a single obejct at the given DN on the given server.
+        """Retrieve a single object at the given DN on the given server.
 
         Return a dictionary of attribute names/values"""
-        return self._search(host, dn, ldap.SCOPE_BASE, attrsonly)[0][1]
+        return self._search(host, dn, ldap.SCOPE_BASE, attrsonly)[0]
 
     def getm(self, host, dn, attrsonly=False):
-        """Retrieve multiple obejcts at the given DN on the given server.
+        """Retrieve multiple objects at the given DN on the given server.
 
         Return a list of dictionaries of attribute name/values."""
-        return [entry for _, entry in
-                self._search(host, dn, ldap.SCOPE_BASE, attrsonly)]
+        return self._search(host, dn, ldap.SCOPE_BASE, attrsonly)
 
     def search(self, host, dn, recur=False, attrsonly=False):
-        """Search for the LDAP obejcts at the given DN on the given server.
+        """Search for the LDAP objects at the given DN on the given server.
 
         Return a list of tuples, each one containing the DN of the LDAP
         object and a dictionary of its contents. The dictionary contains the
@@ -69,8 +106,9 @@ class Connection(object):
     def _search(self, host, dn, scope, attrsonly):
         """Internal search method to support public retrieval methods."""
         try:
-            return self.hosts[host]['con'].search_st(str(dn), scope,
-                                                     attrsonly=attrsonly)
+            return [Entry(dn, attrs) for dn, attrs in
+                    self.hosts[host]['con'].search_st(str(dn), scope,
+                                                      attrsonly=attrsonly)]
         except KeyError:
             raise NoSuchHost('No configured LDAP host={}'.format(host))
         except ldap.INVALID_DN_SYNTAX:
