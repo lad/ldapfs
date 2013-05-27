@@ -14,20 +14,20 @@ LOG = logging.getLogger(__name__)
 class Entry(object):
     """A thin wrapper for an LDAP Entry with conversion to/from strings."""
 
-    ATTRIBUTES_FILENAME = '.attributes'
+    ALL_ATTRIBUTES = '=attributes'
 
     def __init__(self, dn, attrs):
         self.dn = dn
         self.attrs = attrs
 
     def text(self, attr_name):
-        """Return text representing this LDAP entry.
+        """Return text representing the given attribute name.
 
         Attributes are represented as value,value,...
-        A special name ".attributes" is used to denote all attributes where
+        A special name "=attributes" is used to denote all attributes where
         the return value is name=value,value,... for all attributes in the
         entry."""
-        if attr_name == self.ATTRIBUTES_FILENAME:
+        if attr_name == self.ALL_ATTRIBUTES:
             # Return name=value,value,... on separate lines for all attributes
             retval = '\n'.join(['{}={}'.format(key, ','.join(vals))
                                for key, vals in self.attrs.iteritems()]) + '\n'
@@ -37,7 +37,7 @@ class Entry(object):
                 # Return value,value, ...
                 retval = ','.join(vals) + '\n'
             else:
-                retval = None
+                raise AttributeError()
         return retval
 
     def names(self):

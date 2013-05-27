@@ -31,7 +31,6 @@ class LdapFS(fuse.Fuse):
     """LDAP backed Fuse File System."""
 
     DEFAULT_CONFIG = '/etc/ldapfs/ldapfs.cfg'
-    ATTRIBUTES_FILENAME = '.attributes'
     REQUIRED_BASE_CONFIG = ['log_file', 'log_format', 'log_levels']
     PARSE_BASE_CONFIG = [('log_levels', LdapConfigFile.parse_log_levels)]
     REQUIRED_HOST_CONFIG = ['host', 'port', 'base_dns', 'bind_dn',
@@ -46,7 +45,6 @@ class LdapFS(fuse.Fuse):
            :raises: ConfigError, fuse.FuseError
         """
         fuse.Fuse.__init__(self, *args, **kwargs)
-        self.cache = None
         self.flags = 0
         self.multithreaded = 0
         self.ldap = None
@@ -162,7 +160,7 @@ class LdapFS(fuse.Fuse):
         # Now we need to find an object that matches the remaining path
         # (without the leading host and base-dn)
 
-        dn = name.DN.create(path.dn_parts)
+        dn = name.DN.create(path.dn_parts)            
         try:
             if dn and self.ldap.exists(path.host, dn):
                 # We found a matching LDAP object. We're done.
@@ -194,10 +192,9 @@ class LdapFS(fuse.Fuse):
                       'fspath={} {}'.format(parent_dn, fspath, ex))
             return -errno.ENOENT
 
-        size = entry.size(path.filepart)
-        if size:
-            return fs.Stat(isdir=False, size=size)
-        else:
+        try:
+            return fs.Stat(isdir=False, size=entry.size(path.filepart))
+        except AttributeError:
             return -errno.ENOENT
 
     def readdir(self, fspath, _):
@@ -227,7 +224,7 @@ class LdapFS(fuse.Fuse):
 
                 # Each dir has a .attributes file that contains all attributes
                 # for that LDAP object that the current dir is representing
-                dir_entries.append(self.ATTRIBUTES_FILENAME)
+                dir_entries.append(ldapcon.Entry.ALL_ATTRIBUTES)
 
                 try:
                     dn = name.DN(path.dn_parts)
@@ -286,13 +283,10 @@ class LdapFS(fuse.Fuse):
                       .format(dn, fspath, ex))
             return -errno.ENOENT
 
-        text = entry.text(path.filepart)
-        if text:
-            return text[offset:size]
-        else:
+        try:
+            return entry.text(path.filepart)[offset:size]
+        except AttributeError:
             return -errno.ENOENT
-
-        return text[offset:size]
 
     def main(self, *args):
         try:
