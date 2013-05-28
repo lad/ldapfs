@@ -126,7 +126,11 @@ class LdapFS(fuse.Fuse):
 
         :raises: LdapException
         """
-        self.ldap.connect()
+        self.ldap.open()
+
+    def fsdestroy(self):
+        """Shutdown the connections to the LDAP server(s)."""
+        self.ldap.close()
 
     # pylint: disable-msg=R0911,R0912
     # - pylint doesn't like the number of return statements or branches in
@@ -260,7 +264,7 @@ class LdapFS(fuse.Fuse):
         if not path.has_host_part():
             LOG.debug("path doesn't match any configured hosts: {}"
                       .format(fspath))
-            return
+            return -errno.ENOENT
 
         if not path.has_base_dn_part():
             LOG.debug("path doesn't match any configured base DNs for host={} "

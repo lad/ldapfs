@@ -57,7 +57,7 @@ class Connection(object):
     def __init__(self, hosts):
         self.hosts = hosts.copy()
 
-    def connect(self):
+    def open(self):
         """Connect to all configured LDAP hosts."""
         try:
             for host, values in self.hosts.iteritems():
@@ -73,6 +73,16 @@ class Connection(object):
             raise InvalidDN(str(ex))
         except ldap.LDAPError as ex:
             raise LdapException('Error binding to {}: {}'.format(bind_uri, ex))
+
+    def close(self):
+        for value in self.hosts.itervalues():
+            con = value.get('con')
+            if con:
+                try:
+                    con.unbind()
+                except ldap.LDAPError as ex:
+                    LOG.debug('Error binding to {}: {}'.format(bind_uri, ex))
+                del value['con']
 
     def exists(self, host, dn):
         """Check if the given DN exists on the given server."""
