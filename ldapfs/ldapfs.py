@@ -50,6 +50,7 @@ class LdapFS(fuse.Fuse):
         self.ldap = None
         self.hosts = {}
         self.trace_file = None
+        self.dirs = {}
 
         # Path to the config file
         self.config = self.DEFAULT_CONFIG
@@ -157,10 +158,14 @@ class LdapFS(fuse.Fuse):
                       "path={}".format(path.host, fspath))
             return -errno.ENOENT
 
+        LOG.debug('DIRS={} FILEPART={} DIRPART={}'.format(self.dirs, path.filepart, path.dirpart))
+        if path.filepart in self.dirs.get(path.dirpart, []):
+            return fs.Stat(isdir=True)
+
         # Now we need to find an object that matches the remaining path
         # (without the leading host and base-dn)
 
-        dn = name.DN.create(path.dn_parts)            
+        dn = name.DN.create(path.dn_parts)
         try:
             if dn and self.ldap.exists(path.host, dn):
                 # We found a matching LDAP object. We're done.
@@ -222,29 +227,40 @@ class LdapFS(fuse.Fuse):
                               "host={} path={}".format(path.host, fspath))
                     return
 
-                # Each dir has a .attributes file that contains all attributes
-                # for that LDAP object that the current dir is representing
-                dir_entries.append(ldapcon.Entry.ALL_ATTRIBUTES)
+                if not self.dirs.get(path.dirpart):
+                    # Each dir has a .attributes file that contains all
+                    # attributes for that LDAP object that the current dir is
+                    # representing
+                    dir_entries.append(ldapcon.Entry.ALL_ATTRIBUTES)
 
-                try:
-                    dn = name.DN(path.dn_parts)
-                    base = self.ldap.get(path.host, dn, attrsonly=True)
-                    # Each attribute of the LDAP object is represented as a
-                    # directory entry. A later getattr() call on these names
-                    # will tell Fuse that these are files.
-                    dir_entries.extend(base.names())
+                    try:
+                        dn = name.DN(path.dn_parts)
+                        base = self.ldap.get(path.host, dn, attrsonly=True)
+                        # Each attribute of the LDAP object is represented as a
+                        # directory entry. A later getattr() call on these
+                        # names will tell Fuse that these are files.
+                        dir_entries.extend(base.names())
 
-                    entries = self.ldap.search(path.host, dn, recur=False,
-                                               attrsonly=True)
-                    dir_entries.extend([name.DN.to_filename(entry.dn, str(dn))
-                                       for entry in entries])
-                except InvalidDN:
-                    LOG.debug('Invalid DN for fspath={}'.format(fspath))
-                    return
-                except LdapException as ex:
-                    LOG.error('Error reading dn={} for fspath={}. {}'
-                              .format(dn, fspath, ex))
-                    return
+                        entries = self.ldap.search(path.host, dn, recur=False,
+                                                attrsonly=True)
+                        dir_entries.extend([name.DN.to_filename(entry.dn, str(dn))
+                                           for entry in entries])
+                    except InvalidDN:
+                        LOG.debug('Invalid DN for fspath={}'.format(fspath))
+                        return
+                    except NoSuchObject:
+                        LOG.debug('dn={} not found for fspath={}'
+                                .format(dn, fspath))
+                        return
+                    except LdapException as ex:
+                        LOG.error('Error reading dn={} for fspath={}. {}'
+                                .format(dn, fspath, ex))
+                        return
+
+                    LOG.debug('DIRS={}  fspath={}'.format(self.dirs, fspath))
+                    LOG.debug('dir_entries={}.  Extending with {}'
+                            .format(dir_entries, self.dirs.get(fspath)))
+                    dir_entries.extend(self.dirs.get(fspath, []))
 
         for ent in dir_entries:
             LOG.debug('yield {}'.format(ent))
@@ -260,7 +276,7 @@ class LdapFS(fuse.Fuse):
         if not path.has_host_part():
             LOG.debug("path doesn't match any configured hosts: {}"
                       .format(fspath))
-            return
+            return -errno.ENOENT
 
         if not path.has_base_dn_part():
             LOG.debug("path doesn't match any configured base DNs for host={} "
@@ -287,6 +303,87 @@ class LdapFS(fuse.Fuse):
             return entry.text(path.filepart)[offset:size]
         except AttributeError:
             return -errno.ENOENT
+
+    def mkdir(self, fspath, mode):
+        path = name.Path(fspath, self.hosts)
+        if path.len < 3:
+            # No new directories in the host/base-dn directories
+            return -errno.EPERM
+
+        if not path.has_host_part():
+            LOG.debug("path doesn't match any configured hosts: {}"
+                      .format(fspath))
+            return -errno.ENOENT
+
+        if not path.has_base_dn_part():
+            LOG.debug("path doesn't match any configured base DNs for host={} "
+                      "path={}".format(path.host, fspath))
+            return -errno.ENOENT
+
+        # We don't have to check if the path already exists. Fuse will have
+        # called getattr() and won't call mkdir() if the file/dir already
+        # exists. However we don't want to create temporary (in-memory)
+        # directories within other temporary directories, so we lookup the
+        # parent here to ensure it exists in LDAP.
+
+        parent_dn = name.DN.create_parent(path.dn_parts)
+        try:
+            if not parent_dn or not self.ldap.exists(path.host, parent_dn):
+                return -errno.EINVAL
+        except ldapcon.LdapException as ex:
+            LOG.debug('Exception from ldap.exists for dn={} for fspath={}. {}'
+                      .format(dn, fspath, ex))
+            return -errno.EIO
+
+        try:
+            name.DN(path.dn_parts)
+        except InvalidDN:
+            LOG.debug('Invalid DN for fspath={}'.format(fspath))
+            return -errno.EINVAL
+
+        LOG.debug('DIRS={}  DIRPART={}  FILEPART={}'.format(self.dirs, path.dirpart, path.filepart))
+        dirs = self.dirs.get(path.dirpart)
+        if dirs:
+            LOG.debug('APPEND FILEPART={} to DIRS FOR DIRPART={}'.format(path.filepart, path.dirpart))
+            dirs.append(path.filepart)
+        else:
+            LOG.debug('SET FILEPART={} for DIRPART={}'.format(path.filepart, path.dirpart))
+            self.dirs[path.dirpart] = [path.filepart]
+        return 0
+
+    def mknod(self, fspath, _1, _2):
+        path = name.Path(fspath, self.hosts)
+        if path.len < 3:
+            # No files can be created in the host/base-dn directories
+            return -errno.EPERM
+
+        if not path.has_host_part():
+            LOG.debug("path doesn't match any configured hosts: {}"
+                      .format(fspath))
+            return -errno.EPERM
+
+        if not path.has_base_dn_part():
+            LOG.debug("path doesn't match any configured base DNs for host={} "
+                      "path={}".format(path.host, fspath))
+            return -errno.EPERM
+
+        if not path.filepart == ldapcon.Entry.ALL_ATTRIBUTES:
+            # The only file we allow to be created is the all-attribute files
+            LOG.debug('Only the all-attribute files ({}) can be created.'
+                      .format(ldapcon.Entry.ALL_ATTRIBUTES))
+            return -errno.EPERM
+
+        # Must have a temporary/in-memory parent dir or a parent LDAP object
+        if not self.dirs.get(path.dirpart):
+            parent_dn = name.DN.create_parent(path.dn_parts)
+            try:
+                if not parent_dn or not self.ldap.exists(path.host, parent_dn):
+                    return -errno.ENOENT
+            except ldapcon.LdapException as ex:
+                LOG.debug('Exception from ldap.exists for dn={} for fspath={}. {}'
+                        .format(dn, fspath, ex))
+                return -errno.EIO
+
 
     def main(self, *args):
         try:
