@@ -75,14 +75,16 @@ class Connection(object):
             raise LdapException('Error binding to {}: {}'.format(bind_uri, ex))
 
     def close(self):
-        for value in self.hosts.itervalues():
-            con = value.get('con')
+        for host, values in self.hosts.iteritems():
+            con = values.get('con')
             if con:
                 try:
+                    LOG.debug('Closing connection to {}'.format(host))
                     con.unbind()
                 except ldap.LDAPError as ex:
-                    LOG.debug('Error binding to {}: {}'.format(bind_uri, ex))
-                del value['con']
+                    LOG.debug('Error closing connection to {}: {}'
+                              .format(host, ex))
+                del values['con']
 
     def exists(self, host, dn):
         """Check if the given DN exists on the given server."""
