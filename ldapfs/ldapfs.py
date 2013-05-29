@@ -7,11 +7,13 @@ Usage: ldapfs.py -o config=<config-file-path> <mountpoint>
 To unmount: fusermount -u <mountpoint>
 """
 
+
 import sys
 import errno
 import fuse
 import logging
 import os
+import traceback
 
 from .exceptions import LdapfsException, LdapException, InvalidDN, NoSuchObject
 from .ldapconf import LdapConfigFile
@@ -99,6 +101,9 @@ class LdapFS(fuse.Fuse):
             log = logging.getLogger(module)
             log.setLevel(level)
 
+        # setup to log uncaught exceptions
+        sys.excepthook = self.log_uncaught_exceptions
+
         # We should have an 'ldapfs' section common to the entire app (parsed
         # above), and separate sections for each LDAP host that we are to
         # connect to.
@@ -114,6 +119,10 @@ class LdapFS(fuse.Fuse):
             self.hosts[key] = values
 
         self.ldap = ldapcon.Connection(self.hosts)
+
+    def log_uncaught_exceptions(self, ex_cls, ex, tb):
+        LOG.critical(''.join(traceback.format_tb(tb)))
+        LOG.critical('{}: {}'.format(ex_cls, ex))
 
     def fsinit(self):
         """Start the connections to the LDAP server(s).
