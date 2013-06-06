@@ -18,16 +18,13 @@ class Path(object):
 
         self.parts = fspath.strip('{} '.format(os.path.sep)).split(os.path.sep)
         self.len = len(self.parts)
-        if self.len >= 1 and self.parts[0] in hosts:
+        self.host = None
+        try:
             self.host = self.parts[0]
-            if self.len >= 2 and self.parts[1] in hosts[self.host]['base_dns']:
+            if self.parts[1] in hosts[self.host]['base_dns']:
                 self.base_dn = self.parts[1]
                 self.dn_parts = self.parts[1:][:]
-            else:
-                self.base_dn = None
-                self.dn_parts = []
-        else:
-            self.host = None
+        except (KeyError, IndexError):
             self.base_dn = None
             self.dn_parts = []
 
