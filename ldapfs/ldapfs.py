@@ -47,11 +47,11 @@ class LdapFS(fuse.Fuse):
            :raises: ConfigError, fuse.FuseError
         """
         fuse.Fuse.__init__(self, *args, **kwargs)
-        self.flags = 0
-        self.multithreaded = 0
-        self.ldap = None
-        self.hosts = {}
-        self.trace_file = None
+        self.flags = 0              # for fuse
+        self.multithreaded = 0      # for fuse
+        self.ldap = None            # all ldap server interaction
+        self.hosts = {}             # maps hostname to host config
+        self.trace_file = None      # trace program execution (optional)
 
         # Path to the config file
         self.config = self.DEFAULT_CONFIG
@@ -88,15 +88,15 @@ class LdapFS(fuse.Fuse):
         # Split out the log level config and use a log file or stdout as
         # appropriate.
         if config_items['log_file'] == '-':
-            kwargs = {'stream': sys.stdout}
+            destination = {'stream': sys.stdout}
         else:
-            kwargs = {'filename': config_items['log_file']}
+            destination = {'filename': config_items['log_file']}
 
         # Configure logging and set levels
         root_log_level = config_items['log_levels'].pop('root')
         logging.basicConfig(level=root_log_level,
                             format=config_items['log_format'],
-                            **kwargs)
+                            **destination)
         for module, level in config_items['log_levels'].iteritems():
             log = logging.getLogger(module)
             log.setLevel(level)
@@ -120,7 +120,9 @@ class LdapFS(fuse.Fuse):
 
         self.ldap = ldapcon.Connection(self.hosts)
 
-    def log_uncaught_exceptions(self, ex_cls, ex, tb):
+    @staticmethod
+    def log_uncaught_exceptions(ex_cls, ex, tb):
+        """Except hook - called for any uncaught exceptions."""
         LOG.critical(''.join(traceback.format_tb(tb)))
         LOG.critical('{}: {}'.format(ex_cls, ex))
 
@@ -135,11 +137,15 @@ class LdapFS(fuse.Fuse):
 
         :raises: LdapException
         """
+        LOG.debug('File system starting...')
         self.ldap.open()
 
     def fsdestroy(self):
         """Shutdown the connections to the LDAP server(s)."""
+        LOG.debug('File system stopping...')
         self.ldap.close()
+        if self.trace_file:
+            trace.stop()
 
     # pylint: disable-msg=R0911,R0912
     # - pylint doesn't like the number of return statements or branches in
