@@ -42,12 +42,10 @@ class Tracer(object):
             return self
 
         name = frame.f_code.co_name
-        lineno = frame.f_lineno
-        filename = os.path.basename(path)
         if 'self' in frame.f_locals:
-            cls = frame.f_locals['self'].__class__.__name__
+            namespace = frame.f_locals['self'].__class__.__name__
         else:
-            cls = ''
+            namespace = os.path.basename(path)
 
         # Get the function args from the stack frame
         (arg_names, varg_name, kw_name, f_locals) = inspect.getargvalues(frame)
@@ -67,10 +65,10 @@ class Tracer(object):
 
         if event == 'call':
             msg = '{}.{}:{}({})' \
-                  .format(cls or filename, name, lineno, ', '.join(args))
+                  .format(namespace, name, frame.f_lineno, ', '.join(args))
         elif event == 'return':
             msg = '{}.{}:{}({}) -> {}' \
-                  .format(cls or filename, name, lineno, ', '.join(args),
+                  .format(namespace, name, frame.f_lineno, ', '.join(args),
                           str(arg))
         LOG.debug(msg)
         return self
