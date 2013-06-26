@@ -79,6 +79,7 @@ class Connection(object):
             raise LdapException('Error binding to {}: {}'.format(bind_uri, ex))
 
     def close(self):
+        """Close all open connections"""
         for host, values in self.hosts.iteritems():
             con = values.get('con')
             if con:
