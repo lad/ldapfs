@@ -29,8 +29,12 @@ class Entry(object):
         entry."""
         if attr_name == self.ALL_ATTRIBUTES:
             # Return name=value,value,... on separate lines for all attributes
-            retval = '\n'.join(['{}={}'.format(key, ','.join(vals))
-                               for key, vals in self.attrs.iteritems()]) + '\n'
+            if self.attrs:
+                retval = '\n'.join(['{}={}'.format(key, ','.join(vals))
+                                    for key, vals in self.attrs.iteritems()]) \
+                         + '\n'
+            else:
+                retval = ''
         else:
             vals = self.attrs.get(attr_name)
             if vals:
