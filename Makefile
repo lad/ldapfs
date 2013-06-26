@@ -9,12 +9,13 @@ VIRTUAL_ENV ?= /tmp/ldapfs-dev
 PIP_DOWNLOAD_CACHE ?= $(PWD)/.pip_cache
 PIP = $(VIRTUAL_ENV)/bin/pip install --download-cache $(PIP_DOWNLOAD_CACHE) --use-mirrors
 PYTHON = $(VIRTUAL_ENV)/bin/python
+PYTEST = $(VIRTUAL_ENV)/bin/py.test
 SED=sed
 PYLINT=pylint
 PYLINTRC_SRC = $(PWD)/dev/etc/pylintrc
 PYLINTRC = $(VIRTUAL_ENV)/bin/pylintrc
 
-.PHONY: all clean virtualenv build test
+.PHONY: all clean virtualenv build tests
 
 all: virtualenv build pylint
 
@@ -37,6 +38,9 @@ $(PYLINTRC): $(PYLINTRC_SRC)
 
 pylint: virtualenv build $(PYLINTRC)
 	$(PYLINT) --rcfile="$(PYLINTRC)" ldapfs
+
+tests: virtualenv build
+	$(PYTEST)
 
 clean:
 	rm -rf $(VIRTUAL_ENV) build dist *.egg-info log
