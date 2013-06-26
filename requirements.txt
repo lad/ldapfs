@@ -1,2 +1,4 @@
 python-ldap
 fuse-python
+pytest
+mock
