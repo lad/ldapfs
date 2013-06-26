@@ -1,4 +1,6 @@
 python-ldap
 fuse-python
-pytest
 mock
+coverage
+pytest
+pytest-cov

@@ -9,7 +9,8 @@ __url__ = 'http://pypi.python.org/pypi/ldapfs/'
 __description__ = 'Fuse based LDAP File System'
 __long_description__ = __description__
 
-__install_requires__ = ['python-ldap', 'fuse-python', 'pytest', 'mock']
+__install_requires__ = ['python-ldap', 'fuse-python', 'mock', 'coverage',
+                        'pytest', 'pytest-cov']
 __scripts__ = ['bin/ldapfsd']
 __data_files__ = [('etc/ldapfs', ['etc/ldapfs.cfg'])]
 
