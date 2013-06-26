@@ -24,7 +24,6 @@ $(VIRTUAL_ENV):
 	virtualenv $(VIRTUAL_ENV)
 
 build: virtualenv
-	$(PIP) -r requirements.txt
 	$(PYTHON) setup.py develop
 
 sdist: virtualenv
