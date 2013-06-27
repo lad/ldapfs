@@ -11,3 +11,4 @@ trace
 trace.txt
 tags
 .coverage
+.cover

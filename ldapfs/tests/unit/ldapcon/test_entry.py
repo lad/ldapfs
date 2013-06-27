@@ -1,4 +1,5 @@
 
+import pytest
 from ldapfs.ldapcon import Entry
 
 
@@ -81,6 +82,12 @@ def text_args():
 def test_text(text_args):
     entry, attr_name, expected = text_args
     assert entry.text(attr_name) == expected
+
+
+def test_text_error(text_args):
+    entry, attr_name, __ = text_args
+    with pytest.raises(AttributeError):
+        entry.text(attr_name + '-xxx')
 
 
 def names_args():

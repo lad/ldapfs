@@ -1,4 +1,5 @@
 
+import pytest
 import mock
 import ldapfs.ldapcon
 
@@ -15,15 +16,21 @@ def pytest_generate_tests(metafunc):
 
 
 def funcarg_mocks():
+    class INVALID_DN_SYNTAX(Exception): pass
+    class LDAPError(Exception): pass
+
     mocks = mock.Mock()
     mocks.entry = mock.Mock()
     mocks.ldap = mock.Mock()
     mocks.con = mock.Mock()
     mocks.ldap.initialize.return_value = mocks.con
 
-    def patch(monkeypatch):
-        monkeypatch.setattr(ldapfs.ldapcon, 'ldap', mocks.ldap)
-        monkeypatch.setattr(ldapfs.ldapcon, 'Entry', mocks.entry)
+    mocks.ldap.INVALID_DN_SYNTAX = INVALID_DN_SYNTAX
+    mocks.ldap.LDAPError = LDAPError
+
+    def patch(monkeypatch, ldap=mocks.ldap, entry=mocks.entry):
+        monkeypatch.setattr(ldapfs.ldapcon, 'ldap', ldap)
+        monkeypatch.setattr(ldapfs.ldapcon, 'Entry', entry)
 
     mocks.patch = patch
     return [mocks]
@@ -94,6 +101,26 @@ def test_open(monkeypatch, open_args, mocks):
         zip(init_args_list, init_kwargs_list, bind_args_list):
         mocks.ldap.initialize.assert_any_call(*init_args, **init_kwargs)
         mocks.con.simple_bind_s.assert_any_call(*bind_args)
+
+
+def test_open_invalid_dn(monkeypatch, open_args, mocks):
+    hosts, init_args_list, init_kwargs_list, bind_args_list = open_args
+    mocks.ldap.initialize.side_effect = mocks.ldap.INVALID_DN_SYNTAX('...')
+    mocks.patch(monkeypatch)
+
+    con = ldapfs.ldapcon.Connection(hosts)
+    with pytest.raises(ldapfs.exceptions.InvalidDN):
+        con.open()
+
+
+def test_open_ldap_error(monkeypatch, open_args, mocks):
+    hosts, init_args_list, init_kwargs_list, bind_args_list = open_args
+    mocks.ldap.initialize.side_effect = mocks.ldap.LDAPError('...')
+    mocks.patch(monkeypatch)
+
+    con = ldapfs.ldapcon.Connection(hosts)
+    with pytest.raises(ldapfs.exceptions.LdapException):
+        con.open()
 
 
 def test__search(monkeypatch, mocks):
