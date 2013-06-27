@@ -62,17 +62,21 @@ class Connection(object):
         self.hosts = hosts.copy()
 
     def open(self):
-        """Connect to all configured LDAP hosts."""
+        """Open connections to all configured LDAP hosts."""
+        for host, values in self.hosts.iteritems():
+            values['con'] = self._connect(host, values)
+
+    def _connect(self, host, values):
+        """Connect and return a connection to the given host."""
         try:
-            for host, values in self.hosts.iteritems():
-                bind_uri = 'ldap://{}:{}'.format(host, values['port'])
-                LOG.debug('Binding to uri={}'.format(bind_uri))
-                con = ldap.initialize(bind_uri,
-                                      trace_level=values['ldap_trace_level'])
-                con.set_option(ldap.OPT_NETWORK_TIMEOUT, 2.0)
-                con.simple_bind_s(values['bind_dn'], values['bind_password'])
-                values['con'] = con
-                LOG.debug('LDAP session established with host={}'.format(host))
+            bind_uri = 'ldap://{}:{}'.format(host, values['port'])
+            LOG.debug('Binding to uri={}'.format(bind_uri))
+            con = ldap.initialize(bind_uri,
+                                  trace_level=values['ldap_trace_level'])
+            con.set_option(ldap.OPT_NETWORK_TIMEOUT, 2.0)
+            con.simple_bind_s(values['bind_dn'], values['bind_password'])
+            LOG.debug('LDAP session established with host={}'.format(host))
+            return con
         except ldap.INVALID_DN_SYNTAX as ex:
             raise InvalidDN(str(ex))
         except ldap.LDAPError as ex:
