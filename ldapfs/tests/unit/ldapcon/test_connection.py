@@ -123,6 +123,31 @@ def test_open_ldap_error(monkeypatch, open_args, mocks):
         con.open()
 
 
+def test_close(monkeypatch, open_args, mocks):
+    hosts, _, _, _ = open_args
+    mocks.patch(monkeypatch)
+    con = ldapfs.ldapcon.Connection(hosts)
+
+    con.open()
+    con.close()
+
+    expected_call_count = len(hosts)
+    assert mocks.con.unbind.call_count == expected_call_count
+
+
+def test_close_ldap_error(monkeypatch, open_args, mocks):
+    hosts, _, _, _ = open_args
+    mocks.con.unbind.side_effect = mocks.ldap.LDAPError('...')
+    mocks.patch(monkeypatch)
+    con = ldapfs.ldapcon.Connection(hosts)
+
+    con.open()
+    con.close()
+
+    expected_call_count = len(hosts)
+    assert mocks.con.unbind.call_count == expected_call_count
+
+
 def test__search(monkeypatch, mocks):
     hosts = {'host': {'port': 389, 'ldap_trace_level': 0,
                       'bind_password': 'pass', 'bind_dn': 'bdn',
