@@ -11,6 +11,9 @@ PIP = $(VIRTUAL_ENV)/bin/pip install --download-cache $(PIP_DOWNLOAD_CACHE) --us
 PYTHON = $(VIRTUAL_ENV)/bin/python
 PYTEST = $(VIRTUAL_ENV)/bin/py.test
 SED=sed
+MKDIR=mkdir
+MV=mv
+FIND=find
 PYLINT=pylint
 PYLINTRC_SRC = $(PWD)/dev/etc/pylintrc
 PYLINTRC = $(VIRTUAL_ENV)/bin/pylintrc
@@ -42,8 +45,13 @@ pylint: virtualenv build $(PYLINTRC)
 tests: virtualenv build
 	$(PYTEST)
 
+coverage: virtualenv build
+	PYTHONPATH=. $(PYTEST) --cov=ldapfs --cov-report=annotate
+	$(MKDIR) -p .cover
+	$(MV) ldapfs/*,cover .cover
+
 clean:
-	rm -rf $(VIRTUAL_ENV) build dist *.egg-info log
+	rm -rf $(VIRTUAL_ENV) build dist *.egg-info log .cover $$($(FIND) . -name __pycache__)
 
 dist-clean: clean
 	rm -rf $(PIP_DOWNLOAD_CACHE)

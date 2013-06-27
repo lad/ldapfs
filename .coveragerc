@@ -1,0 +1,3 @@
+[report]
+omit =
+    ldapfs/tests/unit/*/*.py
