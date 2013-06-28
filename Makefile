@@ -10,11 +10,6 @@ PIP_DOWNLOAD_CACHE ?= $(PWD)/.pip_cache
 PIP = $(VIRTUAL_ENV)/bin/pip install --download-cache $(PIP_DOWNLOAD_CACHE) --use-mirrors
 PYTHON = $(VIRTUAL_ENV)/bin/python
 PYTEST = $(VIRTUAL_ENV)/bin/py.test
-SED=sed
-MKDIR=mkdir
-MV=mv
-FIND=find
-PYLINT=pylint
 PYLINTRC_SRC = $(PWD)/dev/etc/pylintrc
 PYLINTRC = $(VIRTUAL_ENV)/bin/pylintrc
 
@@ -37,21 +32,21 @@ bdist: virtualenv
 	$(PYTHON) setup.py bdist
 
 $(PYLINTRC): $(PYLINTRC_SRC)
-	$(SED) "s%##REPLACE##%$(VIRTUAL_ENV)%" "$(PYLINTRC_SRC)" >| "$(PYLINTRC)"
+	sed "s%##REPLACE##%$(VIRTUAL_ENV)%" "$(PYLINTRC_SRC)" >| "$(PYLINTRC)"
 
 pylint: virtualenv build $(PYLINTRC)
-	$(PYLINT) --rcfile="$(PYLINTRC)" ldapfs
+	pylint --rcfile="$(PYLINTRC)" ldapfs
 
 tests: virtualenv build
 	$(PYTEST)
 
 coverage: virtualenv build
-	PYTHONPATH=. $(PYTEST) --cov=ldapfs --cov-report=annotate
-	$(MKDIR) -p .cover
-	$(MV) ldapfs/*,cover .cover
+	PYTHONPATH=. py.test --cov=ldapfs --cov-report=annotate
+	mkdir -p .cover
+	mv ldapfs/*,cover .cover
 
 clean:
-	rm -rf $(VIRTUAL_ENV) build dist *.egg-info log .cover $$($(FIND) . -name __pycache__)
+	rm -rf $(VIRTUAL_ENV) build dist *.egg-info log .cover $$(find . -name __pycache__)
 
 dist-clean: clean
 	rm -rf $(PIP_DOWNLOAD_CACHE)
