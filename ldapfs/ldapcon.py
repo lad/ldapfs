@@ -66,7 +66,8 @@ class Connection(object):
         for host, values in self.hosts.iteritems():
             values['con'] = self._connect(host, values)
 
-    def _connect(self, host, values):
+    @staticmethod
+    def _connect(host, values):
         """Connect and return a connection to the given host."""
         try:
             bind_uri = 'ldap://{}:{}'.format(host, values['port'])
@@ -137,3 +138,5 @@ class Connection(object):
         except ldap.NO_SUCH_OBJECT:
             raise NoSuchObject('No object found at host={} DN={}'
                                .format(host, dn))
+        except ldap.LDAPError as ex:
+            raise LdapException('Error="{}" for dn={}'.format(ex, dn))
