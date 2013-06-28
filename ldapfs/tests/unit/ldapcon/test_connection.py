@@ -18,6 +18,7 @@ def pytest_generate_tests(metafunc):
 def funcarg_mocks():
     """Return mocks for all ldapcon dependencies"""
     class INVALID_DN_SYNTAX(Exception): pass
+    class NO_SUCH_OBJECT(Exception): pass
     class LDAPError(Exception): pass
 
     mocks = mock.Mock()
@@ -27,6 +28,7 @@ def funcarg_mocks():
     mocks.ldap.initialize.return_value = mocks.con
 
     mocks.ldap.INVALID_DN_SYNTAX = INVALID_DN_SYNTAX
+    mocks.ldap.NO_SUCH_OBJECT = NO_SUCH_OBJECT
     mocks.ldap.LDAPError = LDAPError
 
     def patch(monkeypatch, ldap=mocks.ldap, entry=mocks.entry):
@@ -47,17 +49,18 @@ def make_three_hosts():
                     'ldap_trace_level': 0,
                     'bind_password': 'pass1',
                     'bind_dn': 'cn=binddn1',
-                    'base_dns': ['dc=ie', 'cn=cn1,dc=ie']}}
+                    'base_dns': ['dc=ie', 'cn=cn1,dc=us']}}
     h2 = {'host2': {'port': 636,
                     'ldap_trace_level': 1,
                     'bind_password': 'pass2',
                     'bind_dn': 'cn=binddn2',
-                    'base_dns': ['dc=ie', 'cn=cn2,dc=ie']}}
+                    'base_dns': ['dc=ie', 'cn=cn2,dc=us']}}
     h3 = {'host3.domain.com': {'port': 12345,
                                'ldap_trace_level': 2,
                                'bind_password': 'pass3',
                                'bind_dn': 'cn=binddn3',
-                               'base_dns': ['dc=ie', 'cn=cn3,dc=ie']}}
+                               'base_dns': ['dc=ie', 'cn=cn3,dc=us',
+                                            'cn=schema']}}
 
     hosts1 = dict(**h1)
 
@@ -98,7 +101,6 @@ def funcarg_search_args():
     return [(hosts1, dn1, attrs, search_return_value),
             (hosts2, dn1, attrs, search_return_value),
             (hosts3, dn1, attrs, search_return_value)]
-
 
 
 def test_init_hosts(monkeypatch, init_hosts, mocks):
@@ -197,3 +199,58 @@ def test__search(monkeypatch, search_args, mocks):
     assert mocks.entry.call_count == len(search_return_value)
     for dn, attrs in search_return_value:
         mocks.entry.assert_called_with(dn, attrs)
+
+
+def test__search_key_error(monkeypatch, search_args, mocks):
+    hosts, dn1, _, _ = search_args
+    scope = 0
+    attrsonly = False
+
+    mocks.patch(monkeypatch)
+    con = ldapfs.ldapcon.Connection(hosts)
+    con.open()
+
+    with pytest.raises(ldapfs.exceptions.NoSuchHost):
+        con._search('xx', dn1, scope, attrsonly)
+
+
+def test__search_invalid_dn(monkeypatch, search_args, mocks):
+    hosts, dn1, _, _ = search_args
+    scope = 0
+    attrsonly = False
+
+    mocks.con.search_st.side_effect = mocks.ldap.INVALID_DN_SYNTAX('...')
+    mocks.patch(monkeypatch)
+    con = ldapfs.ldapcon.Connection(hosts)
+    con.open()
+
+    with pytest.raises(ldapfs.exceptions.InvalidDN):
+        con._search(hosts.keys()[0], dn1, scope, attrsonly)
+
+
+def test__search_no_such_object(monkeypatch, search_args, mocks):
+    hosts, dn1, _, _ = search_args
+    scope = 0
+    attrsonly = False
+
+    mocks.con.search_st.side_effect = mocks.ldap.NO_SUCH_OBJECT('...')
+    mocks.patch(monkeypatch)
+    con = ldapfs.ldapcon.Connection(hosts)
+    con.open()
+
+    with pytest.raises(ldapfs.exceptions.NoSuchObject):
+        con._search(hosts.keys()[0], dn1, scope, attrsonly)
+
+
+def test__search_ldap_error(monkeypatch, search_args, mocks):
+    hosts, dn1, _, _ = search_args
+    scope = 0
+    attrsonly = False
+
+    mocks.con.search_st.side_effect = mocks.ldap.LDAPError('...')
+    mocks.patch(monkeypatch)
+    con = ldapfs.ldapcon.Connection(hosts)
+    con.open()
+
+    with pytest.raises(ldapfs.exceptions.LdapException):
+        con._search(hosts.keys()[0], dn1, scope, attrsonly)
