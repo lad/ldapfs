@@ -253,8 +253,7 @@ class LdapFS(fuse.Fuse):
                     # will tell Fuse that these are files.
                     dir_entries.extend(base.names())
 
-                    entries = self.ldap.search(path.host, dn, recur=False,
-                                               attrsonly=True)
+                    entries = self.ldap.get_children(path.host, dn, attrsonly=True)
                     dir_entries.extend([name.DN.to_filename(entry.dn, str(dn))
                                        for entry in entries])
                 except InvalidDN:

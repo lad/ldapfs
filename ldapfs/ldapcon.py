@@ -56,8 +56,6 @@ class Entry(object):
 class Connection(object):
     """An abstraction of an LDAP connection supporting multiple servers."""
 
-    recur_to_scope = {False: ldap.SCOPE_ONELEVEL, True: ldap.SCOPE_SUBTREE}
-
     def __init__(self, hosts):
         self.hosts = hosts.copy()
 
@@ -108,31 +106,31 @@ class Connection(object):
         """Retrieve a single object at the given DN on the given server.
 
         Return a dictionary of attribute names/values"""
-        return self._search(host, dn, ldap.SCOPE_BASE, attrsonly)[0]
+        return self._search(host, dn, False, attrsonly)[0]
 
-    def getm(self, host, dn, attrsonly=False):
-        """Retrieve multiple objects at the given DN on the given server.
-
-        Return a list of dictionaries of attribute name/values."""
-        return self._search(host, dn, ldap.SCOPE_BASE, attrsonly)
-
-    def search(self, host, dn, recur=False, attrsonly=False):
+    def get_children(self, host, dn, attrsonly=False):
         """Search for the LDAP objects at the given DN on the given server.
 
         Return a list of tuples, each one containing the DN of the LDAP
         object and a dictionary of its contents. The dictionary contains the
         attribute name/values of the object."""
-        scope = self.recur_to_scope[bool(recur)]
-        return self._search(host, dn, scope, attrsonly)
+        return self._search(host, dn, True, attrsonly)
 
-    def _search(self, host, dn, scope, attrsonly):
+    def _search(self, host, dn, children, attrsonly):
         """Internal search method to support public retrieval methods."""
+
         try:
-            return [Entry(dn, attrs) for dn, attrs in
-                    self.hosts[host]['con'].search_st(str(dn), scope,
-                                                      attrsonly=attrsonly)]
+            values = self.hosts[host]
         except KeyError:
             raise NoSuchHost('No configured LDAP host={}'.format(host))
+
+        try:
+            scope = ldap.SCOPE_ONELEVEL if children else ldap.SCOPE_BASE
+            return [Entry(dn, attrs) for dn, attrs in
+                    values['con'].search_st(str(dn), scope,
+                                            attrsonly=attrsonly)]
+        except KeyError:
+            raise NoSuchHost('No open connection to LDAP host={}'.format(host))
         except ldap.INVALID_DN_SYNTAX:
             raise InvalidDN('Invalid DN={}'.format(dn))
         except ldap.NO_SUCH_OBJECT:

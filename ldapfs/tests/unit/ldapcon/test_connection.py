@@ -201,7 +201,7 @@ def test__search(monkeypatch, search_args, mocks):
         mocks.entry.assert_called_with(dn, attrs)
 
 
-def test__search_key_error(monkeypatch, search_args, mocks):
+def test__search_no_configured_host(monkeypatch, search_args, mocks):
     hosts, dn1, _, _ = search_args
     scope = 0
     attrsonly = False
@@ -212,6 +212,18 @@ def test__search_key_error(monkeypatch, search_args, mocks):
 
     with pytest.raises(ldapfs.exceptions.NoSuchHost):
         con._search('xx', dn1, scope, attrsonly)
+
+
+def test__search_no_connected_host(monkeypatch, search_args, mocks):
+    hosts, dn1, _, _ = search_args
+    scope = 0
+    attrsonly = False
+
+    mocks.patch(monkeypatch)
+    con = ldapfs.ldapcon.Connection(hosts)
+
+    with pytest.raises(ldapfs.exceptions.NoSuchHost):
+        con._search(hosts.keys()[0], dn1, scope, attrsonly)
 
 
 def test__search_invalid_dn(monkeypatch, search_args, mocks):
