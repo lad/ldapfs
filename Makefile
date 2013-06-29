@@ -45,6 +45,9 @@ coverage: virtualenv build
 	mkdir -p .cover
 	mv ldapfs/*,cover .cover
 
+tags: ldapfs/*.py
+	ctags -R --languages=python --python-kinds=cfm --exclude=tests --exclude=build --exclude=dist ldapfs
+
 clean:
 	rm -rf $(VIRTUAL_ENV) build dist *.egg-info log .cover $$(find . -name __pycache__)
 
