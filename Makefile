@@ -41,7 +41,7 @@ tests: virtualenv build
 	$(PYTEST)
 
 coverage: virtualenv build
-	PYTHONPATH=. py.test --cov=ldapfs --cov-report=annotate
+	PYTHONPATH=. py.test --cov=ldapfs --cov-report=annotate --cov-report=term
 	mkdir -p .cover
 	mv ldapfs/*,cover .cover
 
